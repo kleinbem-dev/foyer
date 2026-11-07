@@ -40,7 +40,23 @@ export async function fetchGatusStatuses(): Promise<Record<string, HealthStatus>
 			// Normalize keys for matching (e.g. "status", "dashboard", "authentik")
 			const normName = ep.name.toLowerCase().replace(/[^a-z0-9]/g, '');
 			map[normName] = status;
+			map[ep.name.toLowerCase()] = status;
 			if (ep.key) map[ep.key] = status;
+
+			// Common aliases for fleet probes
+			if (normName === 'chat') {
+				map['openwebui'] = status;
+				map['open-webui'] = status;
+			} else if (normName === 'enteauthweb') {
+				map['enteweb'] = status;
+				map['ente-web'] = status;
+				map['ente'] = status;
+			} else if (normName === 'atticcache') {
+				map['attic'] = status;
+			} else if (normName === 'homeassistant') {
+				map['home-assistant'] = status;
+				map['ha'] = status;
+			}
 		}
 
 		return map;

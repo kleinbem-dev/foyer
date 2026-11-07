@@ -1,15 +1,17 @@
 <script lang="ts">
-	import type { HealthStatus, ServiceCategory, ServiceItem } from '../types';
+	import type { HealthStatus, LayoutDensity, ServiceCategory, ServiceItem } from '../types';
 	import ServiceCard from './ServiceCard.svelte';
 
 	let {
 		category,
 		services,
-		healthMap = {}
+		healthMap = {},
+		density = 'comfortable'
 	}: {
 		category: ServiceCategory;
 		services: ServiceItem[];
 		healthMap?: Record<string, HealthStatus>;
+		density?: LayoutDensity;
 	} = $props();
 
 	function getCategoryIcon(cat: ServiceCategory): string {
@@ -36,6 +38,17 @@
 				return '📦';
 		}
 	}
+
+	let containerClass = $derived.by(() => {
+		switch (density) {
+			case 'list':
+				return 'space-y-1.5 flex flex-col';
+			case 'compact':
+				return 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-2.5';
+			default:
+				return 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5';
+		}
+	});
 </script>
 
 {#if services.length > 0}
@@ -51,11 +64,11 @@
 			<div class="flex-1 border-t border-zinc-200/60 dark:border-zinc-800/60 ml-2"></div>
 		</div>
 
-		<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5">
+		<div class={containerClass}>
 			{#each services as service (service.id)}
 				{@const normKey = service.id.toLowerCase().replace(/[^a-z0-9]/g, '')}
 				{@const health = service.gatusEndpoint ? (healthMap[service.gatusEndpoint] ?? healthMap[normKey] ?? 'unknown') : 'unknown'}
-				<ServiceCard {service} {health} />
+				<ServiceCard {service} {health} {density} />
 			{/each}
 		</div>
 	</section>

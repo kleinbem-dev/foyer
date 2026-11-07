@@ -12,24 +12,62 @@
 	let query = $state('');
 	let selectedIndex = $state(0);
 	let inputEl = $state<HTMLInputElement | null>(null);
+	let copyNotice = $state<string | null>(null);
 
 	let filtered = $derived.by(() => {
-		const q = query.trim().toLowerCase();
-		if (!q) return services;
-		return services.filter(
-			(s) =>
-				s.name.toLowerCase().includes(q) ||
-				s.description.toLowerCase().includes(q) ||
-				s.category.toLowerCase().includes(q) ||
-				s.host.toLowerCase().includes(q) ||
-				s.tags?.some((t) => t.toLowerCase().includes(q))
-		);
+		const raw = query.trim();
+		if (!raw) return services;
+
+		// Command prefix: > query searches web
+		if (raw.startsWith('>')) {
+			return [];
+		}
+
+		let q = raw.toLowerCase();
+
+		// Filter prefixes: #host, @cat, !net
+		let hostFilter: string | null = null;
+		let catFilter: string | null = null;
+		let netFilter: string | null = null;
+
+		const tokens = q.split(/\s+/);
+		const words: string[] = [];
+
+		for (const t of tokens) {
+			if (t.startsWith('#')) {
+				hostFilter = t.slice(1);
+			} else if (t.startsWith('@')) {
+				catFilter = t.slice(1);
+			} else if (t.startsWith('!')) {
+				netFilter = t.slice(1);
+			} else {
+				words.push(t);
+			}
+		}
+
+		const matchText = words.join(' ');
+
+		return services.filter((s) => {
+			if (hostFilter && !s.host.toLowerCase().includes(hostFilter)) return false;
+			if (catFilter && !s.category.toLowerCase().includes(catFilter)) return false;
+			if (netFilter && !s.network.toLowerCase().includes(netFilter)) return false;
+			if (!matchText) return true;
+
+			return (
+				s.name.toLowerCase().includes(matchText) ||
+				s.description.toLowerCase().includes(matchText) ||
+				s.category.toLowerCase().includes(matchText) ||
+				s.host.toLowerCase().includes(matchText) ||
+				s.tags?.some((t) => t.toLowerCase().includes(matchText))
+			);
+		});
 	});
 
 	$effect(() => {
 		if (open) {
 			query = '';
 			selectedIndex = 0;
+			copyNotice = null;
 			setTimeout(() => inputEl?.focus(), 50);
 		}
 	});
@@ -39,6 +77,25 @@
 		query;
 		selectedIndex = 0;
 	});
+
+	async function copyCurrentUrl() {
+		const selected = filtered[selectedIndex];
+		if (!selected) return;
+		try {
+			await navigator.clipboard.writeText(selected.url);
+			copyNotice = `Copied ${selected.name} URL`;
+			setTimeout(() => (copyNotice = null), 1500);
+		} catch (err) {
+			console.error('Clipboard copy failed', err);
+		}
+	}
+
+	function webSearch(term: string) {
+		const clean = term.trim();
+		if (!clean) return;
+		window.open(`https://duckduckgo.com/?q=${encodeURIComponent(clean)}`, '_blank', 'noopener,noreferrer');
+		open = false;
+	}
 
 	function handleKeyDown(e: KeyboardEvent) {
 		if (!open) {
@@ -56,6 +113,17 @@
 		if (e.key === 'Escape') {
 			e.preventDefault();
 			open = false;
+		} else if ((e.metaKey || e.ctrlKey) && e.key === 'c') {
+			// Copy highlighted URL if input text isn't selected
+			if (
+				inputEl &&
+				document.activeElement === inputEl &&
+				inputEl.selectionStart === inputEl.selectionEnd &&
+				filtered[selectedIndex]
+			) {
+				e.preventDefault();
+				copyCurrentUrl();
+			}
 		} else if (e.key === 'ArrowDown') {
 			e.preventDefault();
 			selectedIndex = (selectedIndex + 1) % Math.max(1, filtered.length);
@@ -64,10 +132,16 @@
 			selectedIndex = (selectedIndex - 1 + filtered.length) % Math.max(1, filtered.length);
 		} else if (e.key === 'Enter') {
 			e.preventDefault();
+			if (query.trim().startsWith('>')) {
+				webSearch(query.trim().slice(1));
+				return;
+			}
 			const selected = filtered[selectedIndex];
 			if (selected) {
 				window.open(selected.url, '_blank', 'noopener,noreferrer');
 				open = false;
+			} else if (query.trim()) {
+				webSearch(query);
 			}
 		}
 	}
@@ -99,18 +173,47 @@
 					bind:this={inputEl}
 					bind:value={query}
 					type="text"
-					placeholder="Search services, categories, hosts, or tags... (Esc to close)"
+					placeholder="Search services (#host, @category, !public, >web)..."
 					class="w-full py-3.5 px-3 text-sm bg-transparent outline-none text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400"
 				/>
-				<kbd class="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-500 border border-zinc-200 dark:border-zinc-700">
-					ESC
-				</kbd>
+				{#if copyNotice}
+					<span class="text-xs text-emerald-600 dark:text-emerald-400 font-mono px-2 py-0.5 rounded bg-emerald-500/10">
+						{copyNotice}
+					</span>
+				{:else}
+					<kbd class="hidden sm:inline-block px-1.5 py-0.5 text-[10px] font-mono rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-500 border border-zinc-200 dark:border-zinc-700">
+						ESC
+					</kbd>
+				{/if}
 			</div>
 
 			<div class="overflow-y-auto p-2 divide-y divide-transparent">
-				{#if filtered.length === 0}
-					<div class="py-12 text-center text-sm text-zinc-500">
-						No services found for "{query}".
+				{#if query.trim().startsWith('>')}
+					{@const searchTerm = query.trim().slice(1).trim()}
+					<button
+						type="button"
+						onclick={() => webSearch(searchTerm)}
+						class="w-full flex items-center justify-between p-3 rounded-xl bg-zinc-50 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 text-left cursor-pointer"
+					>
+						<div class="flex items-center gap-3">
+							<span class="text-xl">🔍</span>
+							<div>
+								<span class="font-medium text-xs">Search DuckDuckGo</span>
+								<p class="text-[11px] text-zinc-500">"{searchTerm}"</p>
+							</div>
+						</div>
+						<span class="text-xs font-mono text-zinc-400">↵ open</span>
+					</button>
+				{:else if filtered.length === 0}
+					<div class="py-8 text-center space-y-2">
+						<p class="text-sm text-zinc-500">No services found for "{query}".</p>
+						<button
+							type="button"
+							onclick={() => webSearch(query)}
+							class="text-xs text-brand hover:underline font-medium cursor-pointer"
+						>
+							Search web for "{query.trim()}" →
+						</button>
 					</div>
 				{:else}
 					{#each filtered as service, index (service.id)}
@@ -150,8 +253,8 @@
 			</div>
 
 			<div class="px-4 py-2 bg-zinc-50 dark:bg-zinc-950/40 border-t border-zinc-200/60 dark:border-zinc-800/60 flex items-center justify-between text-[11px] text-zinc-500 font-mono">
-				<span>↑↓ to navigate</span>
-				<span>↵ to open</span>
+				<span>↑↓ navigate · ⌘C copy URL</span>
+				<span>↵ open</span>
 				<span>{filtered.length} services</span>
 			</div>
 		</div>

@@ -16,6 +16,26 @@ export type HostNode = 'core-pi' | 'nixos-nvme' | 'mac-mini' | 'nasbook' | 'orin
 
 export type HealthStatus = 'healthy' | 'degraded' | 'down' | 'unknown' | 'checking';
 
+export type LayoutDensity = 'comfortable' | 'compact' | 'list';
+
+export interface PinnedBookmark {
+	id: string;
+	name: string;
+	url: string;
+	icon: string;
+	description?: string;
+	category?: string;
+	createdAt: number;
+}
+
+export interface HostInfo {
+	id: HostNode;
+	name: string;
+	role: string;
+	ip: string;
+	arch: string;
+}
+
 export interface ServiceItem {
 	id: string;
 	name: string;

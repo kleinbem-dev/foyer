@@ -58,16 +58,16 @@ export const FLEET_SERVICES: ServiceItem[] = [
 	},
 	{
 		id: 'attic',
-		name: 'Attic Cache',
+		name: 'Attic UI',
 		category: 'Infrastructure',
 		icon: '📦',
-		description: 'Fast, deduplicated Nix binary cache server.',
-		url: 'https://cache.kleinbem.dev',
+		description: 'Deduplicated Nix binary cache explorer & store inspector.',
+		url: 'https://attic.kleinbem.dev',
 		host: 'core-pi',
 		network: 'mesh',
 		authRequired: false,
 		gatusEndpoint: 'attic',
-		tags: ['nix', 'cache', 'nar']
+		tags: ['nix', 'cache', 'nar', 'attic', 'store']
 	},
 	{
 		id: 'ntfy',

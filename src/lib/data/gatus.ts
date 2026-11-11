@@ -1,4 +1,4 @@
-import type { HealthStatus } from '../types';
+import type { HealthStatus, ServiceItem } from '../types';
 
 export interface EndpointStatus {
 	name: string;
@@ -13,9 +13,9 @@ export interface EndpointStatus {
 
 /**
  * Fetch endpoint statuses from the fleet Gatus instance.
- * Gracefully returns empty status map if unavailable or unreachable.
+ * Returns null when Gatus is unreachable, so callers can keep the last known state.
  */
-export async function fetchGatusStatuses(): Promise<Record<string, HealthStatus>> {
+export async function fetchGatusStatuses(): Promise<Record<string, HealthStatus> | null> {
 	try {
 		const res = await fetch('https://status.kleinbem.dev/api/v1/endpoints/statuses', {
 			headers: { Accept: 'application/json' },
@@ -23,14 +23,17 @@ export async function fetchGatusStatuses(): Promise<Record<string, HealthStatus>
 		});
 
 		if (!res.ok) {
-			return {};
+			return null;
 		}
 
-		const endpoints: EndpointStatus[] = await res.json();
+		const endpoints: unknown = await res.json();
+		if (!Array.isArray(endpoints)) return null;
 		const map: Record<string, HealthStatus> = {};
 
-		for (const ep of endpoints) {
-			const latest = ep.results?.[ep.results.length - 1];
+		for (const ep of endpoints as EndpointStatus[]) {
+			if (!ep || typeof ep.name !== 'string') continue;
+			const results = Array.isArray(ep.results) ? ep.results : [];
+			const latest = results[results.length - 1];
 			const status: HealthStatus = !latest
 				? 'unknown'
 				: latest.success
@@ -41,7 +44,7 @@ export async function fetchGatusStatuses(): Promise<Record<string, HealthStatus>
 			const normName = ep.name.toLowerCase().replace(/[^a-z0-9]/g, '');
 			map[normName] = status;
 			map[ep.name.toLowerCase()] = status;
-			if (ep.key) map[ep.key] = status;
+			if (typeof ep.key === 'string' && ep.key) map[ep.key] = status;
 
 			// Common aliases for fleet probes
 			if (normName === 'chat') {
@@ -61,7 +64,23 @@ export async function fetchGatusStatuses(): Promise<Record<string, HealthStatus>
 
 		return map;
 	} catch {
-		// Silent fallback: offline / CORS / unreachable
-		return {};
+		// Offline / CORS / unreachable
+		return null;
 	}
+}
+
+/**
+ * Health of one service: its Gatus endpoint, then its normalised id, then its raw id.
+ */
+export function resolveHealth(
+	service: Pick<ServiceItem, 'id' | 'gatusEndpoint'>,
+	healthMap: Record<string, HealthStatus>
+): HealthStatus {
+	const normKey = service.id.toLowerCase().replace(/[^a-z0-9]/g, '');
+	return (
+		(service.gatusEndpoint ? healthMap[service.gatusEndpoint] : undefined) ??
+		healthMap[normKey] ??
+		healthMap[service.id] ??
+		'unknown'
+	);
 }

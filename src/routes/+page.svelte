@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import type { HealthStatus, HostNode, LayoutDensity, ServiceCategory } from '#lib/types';
 	import { CATEGORY_ORDER, FLEET_SERVICES } from '#lib/data/services';
-	import { fetchGatusStatuses } from '#lib/data/gatus';
+	import { fetchGatusStatuses, resolveHealth } from '#lib/data/gatus';
 	import HostFilter from '#lib/components/HostFilter.svelte';
 	import HostBar from '#lib/components/HostBar.svelte';
 	import BookmarksSection from '#lib/components/BookmarksSection.svelte';
@@ -13,6 +13,9 @@
 	let networkFilter = $state<'all' | 'public' | 'mesh' | 'issues'>('all');
 	let density = $state<LayoutDensity>('comfortable');
 	let healthMap = $state<Record<string, HealthStatus>>({});
+	// Last successful Gatus poll; the map is kept on failures, so show how old it is.
+	let healthUpdatedAt = $state<Date | null>(null);
+	let healthStale = $state(false);
 
 	onMount(() => {
 		try {
@@ -44,8 +47,7 @@
 			list = list.filter((s) => s.network === 'mesh');
 		} else if (networkFilter === 'issues') {
 			list = list.filter((s) => {
-				const normKey = s.id.toLowerCase().replace(/[^a-z0-9]/g, '');
-				const h = s.gatusEndpoint ? (healthMap[s.gatusEndpoint] ?? healthMap[normKey]) : healthMap[normKey];
+				const h = resolveHealth(s, healthMap);
 				return h === 'down' || h === 'degraded';
 			});
 		}
@@ -75,10 +77,9 @@
 	let metrics = $derived.by(() => {
 		const publicCount = FLEET_SERVICES.filter((s) => s.network === 'public').length;
 		const meshCount = FLEET_SERVICES.filter((s) => s.network === 'mesh').length;
-		const healthyCount = Object.values(healthMap).filter((s) => s === 'healthy').length;
+		const healthyCount = FLEET_SERVICES.filter((s) => resolveHealth(s, healthMap) === 'healthy').length;
 		const issueCount = FLEET_SERVICES.filter((s) => {
-			const probeKey = s.gatusEndpoint || s.id.toLowerCase().replace(/[^a-z0-9]/g, '');
-			const status = healthMap[probeKey] || healthMap[s.id];
+			const status = resolveHealth(s, healthMap);
 			return status === 'down' || status === 'degraded';
 		}).length;
 		return { publicCount, meshCount, healthyCount, issueCount };
@@ -92,7 +93,14 @@
 
 	onMount(() => {
 		async function refreshHealth() {
-			healthMap = await fetchGatusStatuses();
+			const next = await fetchGatusStatuses();
+			if (next) {
+				healthMap = next;
+				healthUpdatedAt = new Date();
+				healthStale = false;
+			} else {
+				healthStale = true;
+			}
 		}
 
 		refreshHealth();
@@ -111,6 +119,13 @@
 			<p class="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
 				Central gateway to self-hosted compute, storage, and AI agents.
 			</p>
+			{#if healthStale}
+				<p class="text-[11px] text-amber-600 dark:text-amber-400 mt-1 font-mono" role="status">
+					Gatus unreachable{healthUpdatedAt
+						? ` · health as of ${healthUpdatedAt.toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}`
+						: ' · no health data yet'}
+				</p>
+			{/if}
 		</div>
 
 		<div class="flex items-center gap-2 sm:gap-2.5 text-xs font-mono flex-wrap" role="group" aria-label="Network status filters">

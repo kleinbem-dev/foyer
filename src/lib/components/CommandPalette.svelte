@@ -76,11 +76,12 @@
 	});
 
 	// When a result link has focus, move focus with the highlight so Enter opens the highlighted one.
-	async function followSelection() {
+	// Pointer moves pass preventScroll, so the list doesn't slide another result under the cursor.
+	async function followSelection(preventScroll = false) {
 		const active = document.activeElement;
 		if (!(active instanceof HTMLAnchorElement) || !dialogEl?.contains(active)) return;
 		await tick();
-		dialogEl.querySelectorAll<HTMLAnchorElement>('a[data-result]')[selectedIndex]?.focus();
+		dialogEl.querySelectorAll<HTMLAnchorElement>('a[data-result]')[selectedIndex]?.focus({ preventScroll });
 	}
 
 	// Keep Tab inside the open dialog.
@@ -271,7 +272,7 @@
 								// mousemove, not mouseenter: scrolling under a still pointer fires enter only.
 								if (selectedIndex === index) return;
 								selectedIndex = index;
-								followSelection();
+								followSelection(true);
 							}}
 							onfocus={() => (selectedIndex = index)}
 							onclick={() => (open = false)}

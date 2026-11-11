@@ -267,7 +267,10 @@
 							target="_blank"
 							rel="noopener noreferrer"
 							data-result
-							onmouseenter={() => (selectedIndex = index)}
+							onmouseenter={() => {
+								selectedIndex = index;
+								followSelection();
+							}}
 							onfocus={() => (selectedIndex = index)}
 							onclick={() => (open = false)}
 							class="flex items-center justify-between p-2.5 rounded-xl text-sm transition-colors {isSelected

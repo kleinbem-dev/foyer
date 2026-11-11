@@ -13,6 +13,9 @@
 	let networkFilter = $state<'all' | 'public' | 'mesh' | 'issues'>('all');
 	let density = $state<LayoutDensity>('comfortable');
 	let healthMap = $state<Record<string, HealthStatus>>({});
+	// Last successful Gatus poll; the map is kept on failures, so show how old it is.
+	let healthUpdatedAt = $state<Date | null>(null);
+	let healthStale = $state(false);
 
 	onMount(() => {
 		try {
@@ -91,7 +94,13 @@
 	onMount(() => {
 		async function refreshHealth() {
 			const next = await fetchGatusStatuses();
-			if (next) healthMap = next;
+			if (next) {
+				healthMap = next;
+				healthUpdatedAt = new Date();
+				healthStale = false;
+			} else {
+				healthStale = true;
+			}
 		}
 
 		refreshHealth();
@@ -110,6 +119,13 @@
 			<p class="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
 				Central gateway to self-hosted compute, storage, and AI agents.
 			</p>
+			{#if healthStale}
+				<p class="text-[11px] text-amber-600 dark:text-amber-400 mt-1 font-mono" role="status">
+					Gatus unreachable{healthUpdatedAt
+						? ` · health as of ${healthUpdatedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+						: ' · no health data yet'}
+				</p>
+			{/if}
 		</div>
 
 		<div class="flex items-center gap-2 sm:gap-2.5 text-xs font-mono flex-wrap" role="group" aria-label="Network status filters">

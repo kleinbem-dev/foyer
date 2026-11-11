@@ -267,7 +267,9 @@
 							target="_blank"
 							rel="noopener noreferrer"
 							data-result
-							onmouseenter={() => {
+							onmousemove={() => {
+								// mousemove, not mouseenter: scrolling under a still pointer fires enter only.
+								if (selectedIndex === index) return;
 								selectedIndex = index;
 								followSelection();
 							}}

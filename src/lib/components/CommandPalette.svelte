@@ -267,7 +267,12 @@
 							target="_blank"
 							rel="noopener noreferrer"
 							data-result
-							onmouseenter={() => (selectedIndex = index)}
+							onmousemove={() => {
+								// mousemove, not mouseenter: scrolling under a still pointer fires enter only.
+								if (selectedIndex === index) return;
+								selectedIndex = index;
+								followSelection();
+							}}
 							onfocus={() => (selectedIndex = index)}
 							onclick={() => (open = false)}
 							class="flex items-center justify-between p-2.5 rounded-xl text-sm transition-colors {isSelected

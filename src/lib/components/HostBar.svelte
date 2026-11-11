@@ -46,7 +46,7 @@
 					onclick={() => {
 						selectedHost = isSelected ? 'all' : host.id;
 					}}
-					class="flex-1 text-left cursor-pointer focus:outline-hidden"
+					class="flex-1 text-left cursor-pointer"
 				>
 					<div class="flex items-center justify-between gap-1 mb-1">
 						<span class="font-semibold text-xs text-zinc-900 dark:text-zinc-100 group-hover:text-brand transition-colors font-mono truncate">

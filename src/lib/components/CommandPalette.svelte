@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tick } from 'svelte';
 	import type { ServiceItem } from '../types';
 
 	let {
@@ -12,6 +13,7 @@
 	let query = $state('');
 	let selectedIndex = $state(0);
 	let inputEl = $state<HTMLInputElement | null>(null);
+	let dialogEl = $state<HTMLElement | null>(null);
 	let copyNotice = $state<string | null>(null);
 
 	let filtered = $derived.by(() => {
@@ -64,13 +66,41 @@
 	});
 
 	$effect(() => {
-		if (open) {
-			query = '';
-			selectedIndex = 0;
-			copyNotice = null;
-			setTimeout(() => inputEl?.focus(), 50);
-		}
+		if (!open) return;
+		const previous = document.activeElement as HTMLElement | null;
+		query = '';
+		selectedIndex = 0;
+		copyNotice = null;
+		inputEl?.focus();
+		return () => previous?.focus?.();
 	});
+
+	// When a result link has focus, move focus with the highlight so Enter opens the highlighted one.
+	async function followSelection() {
+		const active = document.activeElement;
+		if (!(active instanceof HTMLAnchorElement) || !dialogEl?.contains(active)) return;
+		await tick();
+		dialogEl.querySelectorAll<HTMLAnchorElement>('a[data-result]')[selectedIndex]?.focus();
+	}
+
+	// Keep Tab inside the open dialog.
+	function trapTab(e: KeyboardEvent) {
+		if (!dialogEl) return;
+		const focusable = Array.from(
+			dialogEl.querySelectorAll<HTMLElement>('a[href], button:not([disabled]), input, [tabindex]:not([tabindex="-1"])')
+		);
+		if (focusable.length === 0) return;
+		const first = focusable[0];
+		const last = focusable[focusable.length - 1];
+		const active = document.activeElement;
+		if (e.shiftKey && (active === first || !dialogEl.contains(active))) {
+			e.preventDefault();
+			last.focus();
+		} else if (!e.shiftKey && (active === last || !dialogEl.contains(active))) {
+			e.preventDefault();
+			first.focus();
+		}
+	}
 
 	$effect(() => {
 		// Reset selected index when query changes
@@ -103,7 +133,12 @@
 				e.preventDefault();
 				open = true;
 			}
-			if (e.key === '/' && document.activeElement?.tagName !== 'INPUT') {
+			if (
+				e.key === '/' &&
+				!(e.metaKey || e.ctrlKey || e.altKey) &&
+				!['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName ?? '') &&
+				!(document.activeElement as HTMLElement | null)?.isContentEditable
+			) {
 				e.preventDefault();
 				open = true;
 			}
@@ -113,6 +148,8 @@
 		if (e.key === 'Escape') {
 			e.preventDefault();
 			open = false;
+		} else if (e.key === 'Tab') {
+			trapTab(e);
 		} else if ((e.metaKey || e.ctrlKey) && e.key === 'c') {
 			// Copy highlighted URL if input text isn't selected
 			if (
@@ -127,10 +164,14 @@
 		} else if (e.key === 'ArrowDown') {
 			e.preventDefault();
 			selectedIndex = (selectedIndex + 1) % Math.max(1, filtered.length);
+			followSelection();
 		} else if (e.key === 'ArrowUp') {
 			e.preventDefault();
 			selectedIndex = (selectedIndex - 1 + filtered.length) % Math.max(1, filtered.length);
+			followSelection();
 		} else if (e.key === 'Enter') {
+			// A focused result link or button activates itself natively.
+			if (e.target instanceof HTMLAnchorElement || e.target instanceof HTMLButtonElement) return;
 			e.preventDefault();
 			if (query.trim().startsWith('>')) {
 				webSearch(query.trim().slice(1));
@@ -152,9 +193,11 @@
 {#if open}
 	<div
 		class="fixed inset-0 z-50 flex items-start justify-center pt-20 sm:pt-28 px-4 bg-zinc-950/60 backdrop-blur-xs transition-opacity animate-in fade-in duration-150"
+		bind:this={dialogEl}
 		role="dialog"
 		tabindex="-1"
 		aria-modal="true"
+		aria-label="Search services"
 		onclick={(e) => {
 			if (e.target === e.currentTarget) open = false;
 		}}
@@ -173,6 +216,7 @@
 					bind:this={inputEl}
 					bind:value={query}
 					type="text"
+					aria-label="Search services"
 					placeholder="Search services (#host, @category, !public, >web)..."
 					class="w-full py-3.5 px-3 text-sm bg-transparent outline-none text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400"
 				/>
@@ -222,7 +266,9 @@
 							href={service.url}
 							target="_blank"
 							rel="noopener noreferrer"
+							data-result
 							onmouseenter={() => (selectedIndex = index)}
+							onfocus={() => (selectedIndex = index)}
 							onclick={() => (open = false)}
 							class="flex items-center justify-between p-2.5 rounded-xl text-sm transition-colors {isSelected
 								? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100'

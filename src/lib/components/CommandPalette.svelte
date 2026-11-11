@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tick } from 'svelte';
 	import type { ServiceItem } from '../types';
 
 	let {
@@ -70,9 +71,17 @@
 		query = '';
 		selectedIndex = 0;
 		copyNotice = null;
-		setTimeout(() => inputEl?.focus(), 50);
+		inputEl?.focus();
 		return () => previous?.focus?.();
 	});
+
+	// When a result link has focus, move focus with the highlight so Enter opens the highlighted one.
+	async function followSelection() {
+		const active = document.activeElement;
+		if (!(active instanceof HTMLAnchorElement) || !dialogEl?.contains(active)) return;
+		await tick();
+		dialogEl.querySelectorAll<HTMLAnchorElement>('a[data-result]')[selectedIndex]?.focus();
+	}
 
 	// Keep Tab inside the open dialog.
 	function trapTab(e: KeyboardEvent) {
@@ -155,9 +164,11 @@
 		} else if (e.key === 'ArrowDown') {
 			e.preventDefault();
 			selectedIndex = (selectedIndex + 1) % Math.max(1, filtered.length);
+			followSelection();
 		} else if (e.key === 'ArrowUp') {
 			e.preventDefault();
 			selectedIndex = (selectedIndex - 1 + filtered.length) % Math.max(1, filtered.length);
+			followSelection();
 		} else if (e.key === 'Enter') {
 			// A focused result link or button activates itself natively.
 			if (e.target instanceof HTMLAnchorElement || e.target instanceof HTMLButtonElement) return;
@@ -255,7 +266,9 @@
 							href={service.url}
 							target="_blank"
 							rel="noopener noreferrer"
+							data-result
 							onmouseenter={() => (selectedIndex = index)}
+							onfocus={() => (selectedIndex = index)}
 							onclick={() => (open = false)}
 							class="flex items-center justify-between p-2.5 rounded-xl text-sm transition-colors {isSelected
 								? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100'

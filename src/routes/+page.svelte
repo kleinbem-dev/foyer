@@ -122,7 +122,7 @@
 			{#if healthStale}
 				<p class="text-[11px] text-amber-600 dark:text-amber-400 mt-1 font-mono" role="status">
 					Gatus unreachable{healthUpdatedAt
-						? ` · health as of ${healthUpdatedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+						? ` · health as of ${healthUpdatedAt.toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}`
 						: ' · no health data yet'}
 				</p>
 			{/if}

@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import type { HealthStatus, HostNode, LayoutDensity, ServiceCategory } from '#lib/types';
 	import { CATEGORY_ORDER, FLEET_SERVICES } from '#lib/data/services';
-	import { fetchGatusStatuses } from '#lib/data/gatus';
+	import { fetchGatusStatuses, resolveHealth } from '#lib/data/gatus';
 	import HostFilter from '#lib/components/HostFilter.svelte';
 	import HostBar from '#lib/components/HostBar.svelte';
 	import BookmarksSection from '#lib/components/BookmarksSection.svelte';
@@ -44,8 +44,7 @@
 			list = list.filter((s) => s.network === 'mesh');
 		} else if (networkFilter === 'issues') {
 			list = list.filter((s) => {
-				const normKey = s.id.toLowerCase().replace(/[^a-z0-9]/g, '');
-				const h = s.gatusEndpoint ? (healthMap[s.gatusEndpoint] ?? healthMap[normKey]) : healthMap[normKey];
+				const h = resolveHealth(s, healthMap);
 				return h === 'down' || h === 'degraded';
 			});
 		}
@@ -75,10 +74,9 @@
 	let metrics = $derived.by(() => {
 		const publicCount = FLEET_SERVICES.filter((s) => s.network === 'public').length;
 		const meshCount = FLEET_SERVICES.filter((s) => s.network === 'mesh').length;
-		const healthyCount = Object.values(healthMap).filter((s) => s === 'healthy').length;
+		const healthyCount = FLEET_SERVICES.filter((s) => resolveHealth(s, healthMap) === 'healthy').length;
 		const issueCount = FLEET_SERVICES.filter((s) => {
-			const probeKey = s.gatusEndpoint || s.id.toLowerCase().replace(/[^a-z0-9]/g, '');
-			const status = healthMap[probeKey] || healthMap[s.id];
+			const status = resolveHealth(s, healthMap);
 			return status === 'down' || status === 'degraded';
 		}).length;
 		return { publicCount, meshCount, healthyCount, issueCount };
@@ -92,7 +90,8 @@
 
 	onMount(() => {
 		async function refreshHealth() {
-			healthMap = await fetchGatusStatuses();
+			const next = await fetchGatusStatuses();
+			if (next) healthMap = next;
 		}
 
 		refreshHealth();

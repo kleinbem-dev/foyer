@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { HealthStatus, LayoutDensity, ServiceCategory, ServiceItem } from '../types';
 	import ServiceCard from './ServiceCard.svelte';
+	import { resolveHealth } from '../data/gatus';
 
 	let {
 		category,
@@ -66,8 +67,7 @@
 
 		<div class={containerClass}>
 			{#each services as service (service.id)}
-				{@const normKey = service.id.toLowerCase().replace(/[^a-z0-9]/g, '')}
-				{@const health = service.gatusEndpoint ? (healthMap[service.gatusEndpoint] ?? healthMap[normKey] ?? 'unknown') : 'unknown'}
+				{@const health = resolveHealth(service, healthMap)}
 				<ServiceCard {service} {health} {density} />
 			{/each}
 		</div>

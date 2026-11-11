@@ -24,7 +24,8 @@
 			item !== null &&
 			typeof (item as PinnedBookmark).id === 'string' &&
 			typeof (item as PinnedBookmark).name === 'string' &&
-			typeof (item as PinnedBookmark).url === 'string'
+			typeof (item as PinnedBookmark).url === 'string' &&
+			isValidHttpUrl((item as PinnedBookmark).url)
 		);
 	}
 
@@ -34,8 +35,8 @@
 				const saved = localStorage.getItem('foyer-bookmarks');
 				if (saved) {
 					const parsed = JSON.parse(saved);
-					if (Array.isArray(parsed) && parsed.every(isValidBookmark)) {
-						bookmarks = parsed;
+					if (Array.isArray(parsed)) {
+						bookmarks = parsed.filter(isValidBookmark);
 					}
 				}
 			} catch {}
@@ -150,10 +151,11 @@
 					<button
 						type="button"
 						onclick={() => removeBookmark(bm.id)}
-						class="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 text-zinc-400 hover:text-rose-500 p-1 rounded transition-opacity cursor-pointer focus:outline-hidden"
+						class="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 text-zinc-400 hover:text-rose-500 p-1 rounded transition-opacity cursor-pointer"
 						title="Remove bookmark"
+						aria-label="Remove bookmark {bm.name}"
 					>
-						<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+						<svg aria-hidden="true" class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 							<path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
 						</svg>
 					</button>
@@ -185,6 +187,7 @@
 					type="button"
 					onclick={() => (showAddModal = false)}
 					class="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer"
+					aria-label="Close dialog"
 				>
 					✕
 				</button>

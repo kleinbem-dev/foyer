@@ -3,6 +3,16 @@
 @import "@kleinbem/web-config/base.css";
 @import "@kleinbem/web-config/badges.css";
 
+/* App-level names for web-config's tokens; without these the *-brand, bg-bg-surface and
+   text-text-primary utilities generate no CSS. */
+@theme inline {
+	--color-bg-surface: var(--color-bg);
+	--color-bg-elevated: var(--color-surface);
+	--color-text-primary: var(--color-heading);
+	--color-border-subtle: var(--color-line);
+	--color-brand: var(--color-accent);
+}
+
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *, .dark, .dark *));
 
 /* Glassmorphism utility for modern card and navbar styling */

@@ -52,7 +52,7 @@
 			href={service.url}
 			target="_blank"
 			rel="noopener noreferrer"
-			class="flex items-center gap-2.5 min-w-0 flex-1 mr-2 focus:outline-hidden"
+			class="flex items-center gap-2.5 min-w-0 flex-1 mr-2"
 			title={service.description}
 		>
 			<span class="text-xl select-none group-hover:scale-110 transition-transform">
@@ -74,7 +74,7 @@
 				type="button"
 				onclick={copyUrl}
 				aria-label="Copy {service.name} URL"
-				class="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 p-1 rounded transition-opacity cursor-pointer focus:outline-hidden"
+				class="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 p-1 rounded transition-opacity cursor-pointer"
 				title="Copy URL"
 			>
 				<span class="text-[10px] font-mono">{copied ? '✓' : '📋'}</span>
@@ -90,7 +90,7 @@
 			href={service.url}
 			target="_blank"
 			rel="noopener noreferrer"
-			class="flex items-center gap-3 min-w-0 flex-1 mr-4 focus:outline-hidden"
+			class="flex items-center gap-3 min-w-0 flex-1 mr-4"
 		>
 			<span class="text-xl select-none group-hover:scale-110 transition-transform shrink-0">
 				{service.icon}
@@ -138,7 +138,7 @@
 				type="button"
 				onclick={copyUrl}
 				aria-label="Copy {service.name} URL"
-				class="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 p-1 rounded transition-colors cursor-pointer text-xs font-mono focus:outline-hidden"
+				class="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 p-1 rounded transition-colors cursor-pointer text-xs font-mono"
 				title="Copy URL"
 			>
 				{copied ? '✓' : '📋'}
@@ -148,7 +148,7 @@
 				href={service.url}
 				target="_blank"
 				rel="noopener noreferrer"
-				class="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 p-1 focus:outline-hidden"
+				class="text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 p-1"
 				title="Open link"
 			>
 				<svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -168,7 +168,7 @@
 					href={service.url}
 					target="_blank"
 					rel="noopener noreferrer"
-					class="flex items-center gap-2.5 flex-1 min-w-0 focus:outline-hidden"
+					class="flex items-center gap-2.5 flex-1 min-w-0"
 				>
 					<span class="text-2xl select-none group-hover:scale-110 transition-transform duration-150">
 						{service.icon}
@@ -205,7 +205,7 @@
 				href={service.url}
 				target="_blank"
 				rel="noopener noreferrer"
-				class="truncate max-w-[200px] hover:text-brand transition-colors focus:outline-hidden"
+				class="truncate max-w-[200px] hover:text-brand transition-colors"
 			>
 				{service.url.replace(/^https?:\/\//, '')}
 			</a>
@@ -214,7 +214,7 @@
 					type="button"
 					onclick={copyUrl}
 					aria-label="Copy {service.name} URL"
-					class="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:text-zinc-800 dark:hover:text-zinc-200 transition-opacity p-0.5 cursor-pointer focus:outline-hidden"
+					class="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:text-zinc-800 dark:hover:text-zinc-200 transition-opacity p-0.5 cursor-pointer"
 					title="Copy URL"
 				>
 					<span>{copied ? '✓ Copied' : 'Copy'}</span>

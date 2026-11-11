@@ -11,7 +11,7 @@ Foyer serves as the front door to [`home.kleinbem.dev`](https://home.kleinbem.de
 - **Network Reachability Awareness**: Clear visual badges for **Public** (Cloudflare Tunnel), **Mesh-Only** (NetBird), and **LAN-Only** services.
 - **Real-Time Health & Uptime**: Direct live status integration with the fleet's [Gatus](https://status.kleinbem.dev) instance.
 - **Command Palette (`⌘K` / `/`)**: Fast keyboard-driven fuzzy search across all services, host nodes, and quick links.
-- **Host Node Filtering**: Filter services dynamically by node (`core-pi`, `nixos-nvme`, `mac-mini`, `nasbook`, `bpi-r4`).
+- **Host Node Filtering**: Filter services dynamically by node (`core-pi`, `nixos-nvme`, `mac-mini`, `nasbook`, `orin-nano`, `bpi-r4`).
 - **Live Weather & Telemetry**: Built-in weather widget (Open-Meteo) and system clocks.
 
 ## 🛠️ Development

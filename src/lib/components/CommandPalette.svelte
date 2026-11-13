@@ -47,6 +47,12 @@
 	});
 
 	$effect(() => {
+		void query;
+		void filtered.length;
+		listEl?.scrollTo({ top: 0 });
+	});
+
+	$effect(() => {
 		return () => {
 			if (copyTimer) clearTimeout(copyTimer);
 		};

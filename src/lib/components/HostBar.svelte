@@ -4,11 +4,11 @@
 	let {
 		hosts,
 		counts = {},
-		selectedHost = $bindable('all')
+		selectedHost = $bindable<string | null>(null)
 	}: {
 		hosts: HostInfo[];
 		counts?: Record<string, number>;
-		selectedHost?: string;
+		selectedHost?: string | null;
 	} = $props();
 
 	let copiedHost = $state<string | null>(null);
@@ -67,7 +67,7 @@
 						type="button"
 						aria-pressed={isSelected}
 						onclick={() => {
-							selectedHost = isSelected ? 'all' : host.id;
+							selectedHost = isSelected ? null : host.id;
 						}}
 						class="flex-1 text-left cursor-pointer"
 					>

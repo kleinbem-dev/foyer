@@ -14,11 +14,14 @@ export interface EndpointStatus {
 const ENDPOINTS_STATUS_PATH = '/api/v1/endpoints/statuses';
 
 export function buildGatusStatusesUrl(gatusUrl: string): string {
-	const trimmed = gatusUrl.trim().replace(/\/+$/, '');
-	if (trimmed.endsWith(ENDPOINTS_STATUS_PATH)) {
-		return trimmed;
-	}
-	return `${trimmed}${ENDPOINTS_STATUS_PATH}`;
+	const trimmed = gatusUrl.trim();
+	const isRelative = trimmed.startsWith('/');
+	const parsed = new URL(trimmed || ENDPOINTS_STATUS_PATH, 'http://foyer.local');
+	const basePath = parsed.pathname.replace(/\/+$/, '');
+	parsed.pathname = basePath.endsWith(ENDPOINTS_STATUS_PATH)
+		? basePath
+		: `${basePath}${ENDPOINTS_STATUS_PATH}`;
+	return isRelative ? `${parsed.pathname}${parsed.search}${parsed.hash}` : parsed.toString();
 }
 
 /**

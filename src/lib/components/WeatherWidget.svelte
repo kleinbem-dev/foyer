@@ -24,10 +24,16 @@
 			}
 		}
 
+		function onVisibilityChange() {
+			if (!document.hidden) refresh();
+		}
+
 		refresh();
+		document.addEventListener('visibilitychange', onVisibilityChange);
 		const interval = setInterval(refresh, 15 * 60 * 1000);
 		return () => {
 			controller.abort();
+			document.removeEventListener('visibilitychange', onVisibilityChange);
 			clearInterval(interval);
 		};
 	});

@@ -214,7 +214,7 @@ export async function loadPortalConfig(
 			config: structuredClone(DEFAULT_CONFIG),
 			warning: err instanceof SyntaxError
 				? `Invalid JSON in ${configPath}; using default configuration.`
-				: undefined
+				: `Failed to load ${configPath}; using default configuration.`
 		};
 	}
 }

@@ -69,7 +69,9 @@ export function createBookmark(
 	const rawUrl = urlInput.trim();
 	if (!name || !rawUrl) return { error: 'Name and URL are required' };
 
-	const url = /^[a-z][a-z0-9+.-]*:/i.test(rawUrl) ? rawUrl : `https://${rawUrl}`;
+	const hasScheme =
+		/^[a-z][a-z0-9+.-]*:/i.test(rawUrl) && !/^[a-z0-9.-]+:\d{1,5}(?:[/?#]|$)/i.test(rawUrl);
+	const url = hasScheme ? rawUrl : `https://${rawUrl}`;
 	if (!isValidHttpUrl(url)) return { error: 'Please enter a valid HTTP or HTTPS URL' };
 
 	const id = typeof crypto?.randomUUID === 'function'
@@ -147,12 +149,12 @@ export function formatWebSearchUrl(term: string, template = DEFAULT_SEARCH_URL_T
 
 export function filterServices(
 	services: ServiceItem[],
-	selectedHost: string,
+	selectedHost: string | null,
 	networkFilter: NetworkFilter,
 	healthMap: Record<string, HealthStatus>
 ): ServiceItem[] {
 	return services.filter((s) => {
-		if (selectedHost !== 'all' && s.host !== selectedHost) return false;
+		if (selectedHost !== null && s.host !== selectedHost) return false;
 		if (networkFilter === 'public') return s.network === 'public';
 		if (networkFilter === 'mesh') return s.network === 'mesh';
 		if (networkFilter === 'issues') {
@@ -199,7 +201,7 @@ export function computeServiceMetrics(
 	let meshCount = 0;
 	let healthyCount = 0;
 	let issueCount = 0;
-	const hostCounts: Record<string, number> = { total: services.length };
+	const hostCounts: Record<string, number> = Object.create(null);
 
 	for (const s of services) {
 		hostCounts[s.host] = (hostCounts[s.host] ?? 0) + 1;
@@ -210,7 +212,7 @@ export function computeServiceMetrics(
 		if (status === 'healthy') healthyCount++;
 		else if (status === 'down' || status === 'degraded') issueCount++;
 	}
-	return { publicCount, meshCount, healthyCount, issueCount, hostCounts };
+	return { totalCount: services.length, publicCount, meshCount, healthyCount, issueCount, hostCounts };
 }
 
 export function describeWeatherCode(code: number): { icon: string; condition: string } {

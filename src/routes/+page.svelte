@@ -15,7 +15,7 @@
 	let configWarning = $state<string | undefined>(undefined);
 	let bookmarks = $state<PinnedBookmark[]>([]);
 	let commandPaletteOpen = $state(false);
-	let selectedHost = $state('all');
+	let selectedHost = $state<string | null>(null);
 	let requestedNetworkFilter = $state<NetworkFilter>('all');
 	let density = $state<LayoutDensity>('comfortable');
 	let healthMap = $state.raw<Record<string, HealthStatus>>({});
@@ -33,7 +33,7 @@
 
 	let filterPills = $derived([
 		{
-			id: 'all' as const, label: 'Total:', count: metrics.hostCounts.total, icon: '',
+			id: 'all' as const, label: 'Total:', count: metrics.totalCount, icon: '',
 			title: 'Show all services', show: true,
 			activeCls: 'bg-accent text-accent-fg border-transparent font-semibold shadow-2xs',
 			idleCls: 'bg-surface border-line text-muted hover:text-heading'
@@ -173,14 +173,14 @@
 		{#if config.services.length > 0}
 			<div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2">
 				<div class="flex items-center gap-3 flex-wrap min-h-8">
-					{#if selectedHost !== 'all' || networkFilter !== 'all'}
+					{#if selectedHost !== null || networkFilter !== 'all'}
 						<span class="text-xs font-mono text-muted">
 							Showing {filteredServices.length} of {config.services.length} services
 						</span>
 						<button
 							type="button"
 							onclick={() => {
-								selectedHost = 'all';
+								selectedHost = null;
 								requestedNetworkFilter = 'all';
 							}}
 							class="text-xs text-accent hover:underline font-mono cursor-pointer"
@@ -220,7 +220,7 @@
 	<footer class="py-6 border-t border-line text-center text-xs text-muted font-mono">
 		<div class="flex items-center justify-center gap-3 flex-wrap px-4">
 			<span>{config.title.toLowerCase()}</span>
-			{#each config.footerLinks ?? [] as link (link.url)}
+			{#each config.footerLinks ?? [] as link, i (`${i}:${link.url}`)}
 				<span aria-hidden="true">•</span>
 				<a href={link.url} target="_blank" rel="noopener noreferrer" class="hover:underline hover:text-heading transition-colors">
 					{link.label}
@@ -234,7 +234,7 @@
 		{bookmarks}
 		hosts={config.hosts}
 		searchUrlTemplate={config.searchUrlTemplate}
-		onSelectHost={(hostId) => (selectedHost = selectedHost === hostId ? 'all' : hostId)}
+		onSelectHost={(hostId) => (selectedHost = selectedHost === hostId ? null : hostId)}
 		bind:open={commandPaletteOpen}
 	/>
 </div>

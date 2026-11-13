@@ -142,6 +142,17 @@ describe('loadPortalConfig', () => {
 			new Response('{broken json', { status: 200 })) as typeof fetch;
 		const badJson = await loadPortalConfig();
 		assert.match(badJson.warning ?? '', /Invalid JSON/);
+
+		globalThis.fetch = (async () => {
+			throw new TypeError('Failed to fetch');
+		}) as typeof fetch;
+		const netErr = await loadPortalConfig();
+		assert.match(netErr.warning ?? '', /Failed to load/);
+
+		const callerAbort = new AbortController();
+		callerAbort.abort();
+		const cancelled = await loadPortalConfig('./config.json', callerAbort.signal);
+		assert.equal(cancelled.warning, undefined);
 	});
 });
 
@@ -154,6 +165,14 @@ describe('Gatus URL normalization', () => {
 		assert.equal(
 			buildGatusStatusesUrl('https://status.example.test/api/v1/endpoints/statuses'),
 			'https://status.example.test/api/v1/endpoints/statuses'
+		);
+		assert.equal(
+			buildGatusStatusesUrl('/gatus?view=public'),
+			'/gatus/api/v1/endpoints/statuses?view=public'
+		);
+		assert.equal(
+			buildGatusStatusesUrl('https://status.example.test/api/v1/endpoints/statuses?view=public'),
+			'https://status.example.test/api/v1/endpoints/statuses?view=public'
 		);
 	});
 });
@@ -173,11 +192,15 @@ describe('Bookmarks validation & creation', () => {
 		assert.deepEqual(parseStoredBookmarks('{invalid'), []);
 	});
 
-	it('normalizes bare domains to https:// and rejects non-http schemes in createBookmark', () => {
+	it('normalizes bare domains and host:port to https:// and rejects non-http schemes in createBookmark', () => {
 		const ok = createBookmark('Grafana', 'grafana.example.test', '');
 		assert.ok(ok.bookmark);
 		assert.equal(ok.bookmark.url, 'https://grafana.example.test');
 		assert.equal(ok.bookmark.icon, '🔗');
+
+		const withPort = createBookmark('Local Grafana', 'grafana.example.test:3000/dash', '📊');
+		assert.ok(withPort.bookmark);
+		assert.equal(withPort.bookmark.url, 'https://grafana.example.test:3000/dash');
 
 		const xss = createBookmark('Bad', 'javascript:alert(1)', '⭐');
 		assert.equal(xss.bookmark, undefined);
@@ -252,15 +275,33 @@ describe('Palette multi-token search, filtering, grouping & weather', () => {
 	it('computes metrics, filters issues, and preserves custom category ordering', () => {
 		const health = { attic: 'down' as const, auth: 'healthy' as const };
 		const metrics = computeServiceMetrics(services, health);
+		assert.equal(metrics.totalCount, 2);
 		assert.equal(metrics.publicCount, 1);
 		assert.equal(metrics.meshCount, 1);
 		assert.equal(metrics.healthyCount, 1);
 		assert.equal(metrics.issueCount, 1);
 		assert.equal(metrics.hostCounts['node-1'], 1);
+		assert.equal(metrics.hostCounts.total, undefined);
 
-		const issues = filterServices(services, 'all', 'issues', health);
+		const totalHostMetrics = computeServiceMetrics(
+			[{ ...services[0], host: 'total' }],
+			health
+		);
+		assert.equal(totalHostMetrics.totalCount, 1);
+		assert.equal(totalHostMetrics.hostCounts.total, 1);
+
+		const issues = filterServices(services, null, 'issues', health);
 		assert.equal(issues.length, 1);
 		assert.equal(issues[0].id, 'attic');
+
+		const allIdHost = filterServices(
+			[...services, { ...services[0], id: 'edge-svc', host: 'all' }],
+			'all',
+			'all',
+			health
+		);
+		assert.equal(allIdHost.length, 1);
+		assert.equal(allIdHost[0].id, 'edge-svc');
 
 		const groups = groupServicesByCategory(services, ['Identity']);
 		assert.deepEqual(

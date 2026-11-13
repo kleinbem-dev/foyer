@@ -1,18 +1,4 @@
-export type ServiceCategory =
-	| 'Infrastructure'
-	| 'AI Engineering'
-	| 'AI'
-	| 'Identity'
-	| 'Dev'
-	| 'Apps'
-	| 'Documents'
-	| 'Security'
-	| 'Media'
-	| 'Other';
-
 export type NetworkType = 'public' | 'mesh' | 'lan';
-
-export type HostNode = 'core-pi' | 'nixos-nvme' | 'mac-mini' | 'nasbook' | 'orin-nano' | 'bpi-r4';
 
 export type HealthStatus = 'healthy' | 'degraded' | 'down' | 'unknown' | 'checking';
 
@@ -23,37 +9,55 @@ export interface PinnedBookmark {
 	name: string;
 	url: string;
 	icon: string;
-	description?: string;
-	category?: string;
 	createdAt: number;
 }
 
 export interface HostInfo {
-	id: HostNode;
+	id: string;
 	name: string;
 	role: string;
-	ip: string;
-	arch: string;
+	ip?: string;
+	arch?: string;
+	icon?: string;
 }
 
 export interface ServiceItem {
 	id: string;
 	name: string;
-	category: ServiceCategory;
+	category: string;
 	icon: string;
 	description: string;
 	url: string;
-	host: HostNode;
+	host: string;
 	network: NetworkType;
-	authRequired: boolean;
 	gatusEndpoint?: string;
 	tags?: string[];
 }
 
-export interface GatusStatus {
-	key: string;
-	name: string;
-	group: string;
-	status: HealthStatus;
-	durationMs?: number;
+export interface WeatherConfig {
+	latitude: number;
+	longitude: number;
+	timezone?: string;
+	label?: string;
+}
+
+export interface FooterLink {
+	label: string;
+	url: string;
+}
+
+export interface PortalConfig {
+	title: string;
+	badge?: string;
+	subtitle?: string;
+	welcomeTitle: string;
+	welcomeSubtitle?: string;
+	hosts: HostInfo[];
+	services: ServiceItem[];
+	categoryOrder?: string[];
+	categoryIcons?: Record<string, string>;
+	gatusUrl?: string;
+	weather?: WeatherConfig;
+	searchUrlTemplate?: string;
+	footerLinks?: FooterLink[];
 }

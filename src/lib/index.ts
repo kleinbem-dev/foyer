@@ -1,3 +1,4 @@
 export * from './types';
-export * from './data/services';
+export * from './config';
+export * from './portal';
 export * from './data/gatus';

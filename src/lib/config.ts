@@ -33,10 +33,10 @@ export function isValidHttpUrl(candidate: string): boolean {
 	}
 }
 
-/** Allows http(s) URLs or single-slash same-origin paths, rejecting protocol-relative and script schemes. */
+/** Allows http(s) URLs or single-slash same-origin paths, rejecting protocol-relative and script schemes. Browsers read a backslash as `/`. */
 export function isSafePortalUrl(candidate: string): boolean {
 	if (candidate.startsWith('/') && !candidate.startsWith('//')) {
-		return !/[\s\0]/.test(candidate);
+		return !/[\s\0\\]/.test(candidate);
 	}
 	return isValidHttpUrl(candidate);
 }

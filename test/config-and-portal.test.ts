@@ -44,6 +44,7 @@ describe('URL validation & sanitization', () => {
 		assert.equal(isSafePortalUrl('/grafana/'), true);
 		assert.equal(isSafePortalUrl('//evil.example.test'), false);
 		assert.equal(isSafePortalUrl('/bad path with spaces'), false);
+		assert.equal(isSafePortalUrl('/\\outside.example.test'), false);
 		assert.equal(isSafePortalUrl('javascript:void(0)'), false);
 	});
 });

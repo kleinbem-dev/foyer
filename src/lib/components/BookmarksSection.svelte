@@ -1,14 +1,17 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { createBookmark, parseStoredBookmarks } from '../portal';
-	import type { PinnedBookmark } from '../types';
+	import type { PinnedBookmark, PinnedLink } from '../types';
 
 	const STORAGE_KEY = 'foyer-bookmarks';
 
 	let {
-		bookmarks = $bindable<PinnedBookmark[]>([])
+		bookmarks = $bindable<PinnedBookmark[]>([]),
+		links = []
 	}: {
 		bookmarks?: PinnedBookmark[];
+		/** Shared links from `/config.json`, listed before the browser-local bookmarks. */
+		links?: PinnedLink[];
 	} = $props();
 
 	let showAddModal = $state(false);
@@ -84,6 +87,25 @@
 	}}
 />
 
+{#snippet linkBody(item: PinnedLink)}
+	<a
+		href={item.url}
+		target="_blank"
+		rel="noopener noreferrer"
+		class="flex items-center gap-2 min-w-0 flex-1"
+	>
+		<span aria-hidden="true" class="text-lg shrink-0">{item.icon}</span>
+		<div class="min-w-0 flex-1">
+			<span class="block text-xs font-medium text-heading truncate group-hover:text-accent transition-colors">
+				{item.name}
+			</span>
+			<span class="block text-[10px] font-mono text-muted truncate">
+				{item.url.replace(/^https?:\/\//, '')}
+			</span>
+		</div>
+	</a>
+{/snippet}
+
 <section class="space-y-3" aria-label="Pinned and Quick Links">
 	<div class="flex items-center justify-between">
 		<div class="flex items-center gap-2">
@@ -92,7 +114,7 @@
 				<span>Pinned & Quick Links</span>
 			</h2>
 			<span class="text-[11px] font-mono px-1.5 py-0.5 rounded-full bg-surface-high text-muted">
-				{bookmarks.length}
+				{links.length + bookmarks.length}
 			</span>
 		</div>
 
@@ -106,30 +128,20 @@
 		</button>
 	</div>
 
-	{#if bookmarks.length === 0}
+	{#if links.length + bookmarks.length === 0}
 		<div class="p-6 rounded-xl border border-dashed border-line text-center text-xs text-muted">
 			No pinned links yet. Click <span class="font-semibold text-heading">+ Add Link</span> to pin frequent bookmarks to your homelab portal.
 		</div>
 	{:else}
 		<div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5">
+			{#each links as link (link.id)}
+				<div class="group relative flex items-center justify-between p-2.5 rounded-xl border border-line bg-surface/80 hover:bg-surface-high shadow-2xs hover:shadow-xs transition-colors">
+					{@render linkBody(link)}
+				</div>
+			{/each}
 			{#each bookmarks as bm (bm.id)}
 				<div class="group relative flex items-center justify-between p-2.5 rounded-xl border border-line bg-surface/80 hover:bg-surface-high shadow-2xs hover:shadow-xs transition-colors">
-					<a
-						href={bm.url}
-						target="_blank"
-						rel="noopener noreferrer"
-						class="flex items-center gap-2 min-w-0 flex-1"
-					>
-						<span aria-hidden="true" class="text-lg shrink-0">{bm.icon}</span>
-						<div class="min-w-0 flex-1">
-							<span class="block text-xs font-medium text-heading truncate group-hover:text-accent transition-colors">
-								{bm.name}
-							</span>
-							<span class="block text-[10px] font-mono text-muted truncate">
-								{bm.url.replace(/^https?:\/\//, '')}
-							</span>
-						</div>
-					</a>
+					{@render linkBody(bm)}
 
 					<button
 						type="button"

@@ -114,6 +114,23 @@ describe('parsePortalConfig & static/config.json', () => {
 		assert.deepEqual(cfg.footerLinks, [{ label: 'Docs', url: '/docs' }]);
 	});
 
+	it('parses shared pinned links, defaulting the icon and dropping unsafe or duplicate entries', () => {
+		const cfg = parsePortalConfig({
+			links: [
+				{ name: 'Docs', url: 'https://docs.example.test', icon: '📚' },
+				{ name: 'Wiki', url: '/wiki' },
+				{ name: 'Docs again', url: 'https://docs.example.test' },
+				{ name: 'Bad', url: 'javascript:alert(1)' },
+				{ url: 'https://nameless.example.test' }
+			]
+		});
+		assert.deepEqual(cfg.links, [
+			{ id: 'cfg:https://docs.example.test', name: 'Docs', url: 'https://docs.example.test', icon: '📚' },
+			{ id: 'cfg:/wiki', name: 'Wiki', url: '/wiki', icon: '🔗' }
+		]);
+		assert.equal(parsePortalConfig({ links: [] }).links, undefined);
+	});
+
 	it('accepts valid boundary weather coordinates', () => {
 		const cfg = parsePortalConfig({
 			weather: { latitude: -53.8, longitude: 151.2, timezone: 'UTC', label: 'Harbor' }

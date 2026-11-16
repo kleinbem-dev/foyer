@@ -168,7 +168,7 @@
 		</div>
 
 		<HostBar hosts={config.hosts} counts={metrics.hostCounts} bind:selectedHost />
-		<BookmarksSection bind:bookmarks />
+		<BookmarksSection bind:bookmarks links={config.links} />
 
 		{#if config.services.length > 0}
 			<div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-2">
@@ -231,7 +231,7 @@
 
 	<CommandPalette
 		services={config.services}
-		{bookmarks}
+		bookmarks={[...(config.links ?? []), ...bookmarks]}
 		hosts={config.hosts}
 		searchUrlTemplate={config.searchUrlTemplate}
 		onSelectHost={(hostId) => (selectedHost = selectedHost === hostId ? null : hostId)}

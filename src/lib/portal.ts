@@ -5,7 +5,7 @@ import {
 	isValidHttpUrl
 } from './config';
 import { resolveHealth } from './data/gatus';
-import type { HealthStatus, HostInfo, PinnedBookmark, ServiceItem, WeatherConfig } from './types';
+import type { HealthStatus, HostInfo, PinnedBookmark, PinnedLink, ServiceItem, WeatherConfig } from './types';
 
 export type NetworkFilter = 'all' | 'public' | 'mesh' | 'issues';
 
@@ -85,7 +85,7 @@ export function createBookmark(
 
 export function buildPaletteEntries(
 	services: ServiceItem[],
-	bookmarks: PinnedBookmark[] = [],
+	bookmarks: PinnedLink[] = [],
 	hosts: HostInfo[] = []
 ): PaletteEntry[] {
 	return [

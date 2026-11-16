@@ -12,6 +12,14 @@ export interface PinnedBookmark {
 	createdAt: number;
 }
 
+/** A pinned link from `/config.json`: the same for every visitor, not removable in the UI. */
+export interface PinnedLink {
+	id: string;
+	name: string;
+	url: string;
+	icon: string;
+}
+
 export interface HostInfo {
 	id: string;
 	name: string;
@@ -60,4 +68,5 @@ export interface PortalConfig {
 	weather?: WeatherConfig;
 	searchUrlTemplate?: string;
 	footerLinks?: FooterLink[];
+	links?: PinnedLink[];
 }

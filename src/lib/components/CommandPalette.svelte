@@ -7,7 +7,7 @@
 		formatWebSearchUrl,
 		type PaletteEntry
 	} from '../portal';
-	import type { HostInfo, PinnedBookmark, ServiceItem } from '../types';
+	import type { HostInfo, PinnedLink, ServiceItem } from '../types';
 
 	let {
 		services,
@@ -18,7 +18,7 @@
 		open = $bindable(false)
 	}: {
 		services: ServiceItem[];
-		bookmarks?: PinnedBookmark[];
+		bookmarks?: PinnedLink[];
 		hosts?: HostInfo[];
 		searchUrlTemplate?: string;
 		onSelectHost?: (hostId: string) => void;

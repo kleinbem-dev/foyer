@@ -11,6 +11,7 @@ Foyer compiles to a pure static SPA (`index.html`, `200.html`, `_app/`) with zer
 - **Network Reachability Badges**: Distinct indicators for `public`, `mesh`, and `lan` endpoints plus one-click filter chips.
 - **Live Gatus Health**: Optional client-side polling against a [Gatus](https://gatus.io) `/api/v1/endpoints/statuses` endpoint with visibility-aware refresh and stale-data indication.
 - **Host Node Bar**: Per-host service counts, one-click host filtering, and IP clipboard copy.
+- **Shared Pinned Links**: Optional `links` in `/config.json` show the same pinned links to every visitor, ahead of their own bookmarks.
 - **Local Quick Bookmarks**: Browser-stored personal links (`localStorage`) in a dedicated native `<dialog>` modal, immediately searchable from `⌘K`.
 - **Optional Weather & Clock**: Minute-aligned UTC/local header clock and optional [Open-Meteo](https://open-meteo.com) telemetry widget.
 
@@ -50,6 +51,13 @@ Serve a `/config.json` file at the web root alongside Foyer's static assets (an 
       "network": "mesh",
       "gatusEndpoint": "grafana",
       "tags": ["metrics", "observability"]
+    }
+  ],
+  "links": [
+    {
+      "name": "Docs",
+      "url": "https://docs.example.com",
+      "icon": "📚"
     }
   ],
   "footerLinks": [

@@ -1,4 +1,4 @@
-import type { FooterLink, HostInfo, NetworkType, PortalConfig, ServiceItem, WeatherConfig } from './types';
+import type { FooterLink, HostInfo, NetworkType, PinnedLink, PortalConfig, ServiceItem, WeatherConfig } from './types';
 
 export const DEFAULT_SEARCH_URL_TEMPLATE = 'https://duckduckgo.com/?q=%s';
 
@@ -33,10 +33,10 @@ export function isValidHttpUrl(candidate: string): boolean {
 	}
 }
 
-/** Allows http(s) URLs or single-slash same-origin paths, rejecting protocol-relative and script schemes. */
+/** Allows http(s) URLs or single-slash same-origin paths, rejecting protocol-relative and script schemes. Browsers read a backslash as `/`. */
 export function isSafePortalUrl(candidate: string): boolean {
 	if (candidate.startsWith('/') && !candidate.startsWith('//')) {
-		return !/[\s\0]/.test(candidate);
+		return !/[\s\0\\]/.test(candidate);
 	}
 	return isValidHttpUrl(candidate);
 }
@@ -136,6 +136,24 @@ function parseFooterLinks(raw: unknown): FooterLink[] | undefined {
 	return links;
 }
 
+function parseLinks(raw: unknown): PinnedLink[] | undefined {
+	if (!Array.isArray(raw)) return undefined;
+	const seen = new Set<string>();
+	const links: PinnedLink[] = [];
+	for (const entry of raw) {
+		if (!entry || typeof entry !== 'object') continue;
+		const obj = entry as Record<string, unknown>;
+		const name = asNonEmptyString(obj.name);
+		const url = asNonEmptyString(obj.url);
+		if (!name || !url || !isSafePortalUrl(url)) continue;
+		const id = `cfg:${asNonEmptyString(obj.id) ?? url}`;
+		if (seen.has(id)) continue;
+		seen.add(id);
+		links.push({ id, name, url, icon: asNonEmptyString(obj.icon) ?? '🔗' });
+	}
+	return links.length > 0 ? links : undefined;
+}
+
 /**
  * Validates an untrusted JSON payload into a safe PortalConfig and deduplicates host/service IDs
  * so Svelte keyed each-blocks cannot throw on duplicate keys.
@@ -176,7 +194,8 @@ export function parsePortalConfig(raw: unknown): PortalConfig {
 			searchCandidate && isValidHttpUrl(searchCandidate.replace('%s', 'test'))
 				? searchCandidate
 				: DEFAULT_SEARCH_URL_TEMPLATE,
-		footerLinks: parseFooterLinks(obj.footerLinks) ?? DEFAULT_CONFIG.footerLinks
+		footerLinks: parseFooterLinks(obj.footerLinks) ?? DEFAULT_CONFIG.footerLinks,
+		links: parseLinks(obj.links)
 	};
 }
 

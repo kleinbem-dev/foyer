@@ -112,8 +112,7 @@ describe('CommandPalette component', () => {
 						id: 'bm-1',
 						name: 'Pinned Router',
 						url: 'https://192.0.2.1',
-						icon: '📡',
-						createdAt: 1
+						icon: '📡'
 					}
 				],
 				hosts: [{ id: 'core-pi', name: 'core-pi', role: 'Gateway', ip: '192.0.2.2', arch: 'aarch64' }],
@@ -165,6 +164,16 @@ describe('BookmarksSection & Header components', () => {
 		assert.match(body, /Pinned &amp; Quick Links|Pinned & Quick Links/);
 		assert.match(body, /Add Link/);
 		assert.doesNotMatch(body, /Add Pinned Link/);
+	});
+
+	it('lists shared config links without a remove button', () => {
+		const { body } = render(BookmarksSection, {
+			props: { links: [{ id: 'cfg:docs', name: 'Docs', url: 'https://docs.example.test', icon: '📚' }] }
+		});
+		assert.match(body, /Docs/);
+		assert.match(body, /docs\.example\.test/);
+		assert.doesNotMatch(body, /No pinned links yet/);
+		assert.doesNotMatch(body, /Remove bookmark/);
 	});
 
 	it('renders Header with search trigger and ThemeToggle', () => {

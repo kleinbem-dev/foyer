@@ -44,6 +44,7 @@ describe('URL validation & sanitization', () => {
 		assert.equal(isSafePortalUrl('/grafana/'), true);
 		assert.equal(isSafePortalUrl('//evil.example.test'), false);
 		assert.equal(isSafePortalUrl('/bad path with spaces'), false);
+		assert.equal(isSafePortalUrl('/\\outside.example.test'), false);
 		assert.equal(isSafePortalUrl('javascript:void(0)'), false);
 	});
 });
@@ -112,6 +113,23 @@ describe('parsePortalConfig & static/config.json', () => {
 		assert.equal(cfg.services.length, 1);
 		assert.deepEqual(cfg.services[0].tags, ['metrics']);
 		assert.deepEqual(cfg.footerLinks, [{ label: 'Docs', url: '/docs' }]);
+	});
+
+	it('parses shared pinned links, defaulting the icon and dropping unsafe or duplicate entries', () => {
+		const cfg = parsePortalConfig({
+			links: [
+				{ name: 'Docs', url: 'https://docs.example.test', icon: '📚' },
+				{ name: 'Wiki', url: '/wiki' },
+				{ name: 'Docs again', url: 'https://docs.example.test' },
+				{ name: 'Bad', url: 'javascript:alert(1)' },
+				{ url: 'https://nameless.example.test' }
+			]
+		});
+		assert.deepEqual(cfg.links, [
+			{ id: 'cfg:https://docs.example.test', name: 'Docs', url: 'https://docs.example.test', icon: '📚' },
+			{ id: 'cfg:/wiki', name: 'Wiki', url: '/wiki', icon: '🔗' }
+		]);
+		assert.equal(parsePortalConfig({ links: [] }).links, undefined);
 	});
 
 	it('accepts valid boundary weather coordinates', () => {

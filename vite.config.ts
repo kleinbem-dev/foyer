@@ -1,9 +1,3 @@
-import { defineWebConfig } from '@kleinbem/web-config';
+import { defineWebConfig } from '@kleinbem/web-config/vite';
 
-export default defineWebConfig({
-	adapterOptions: {
-		fallback: '200.html',
-		pages: 'build',
-		assets: 'build'
-	}
-});
+export default defineWebConfig();

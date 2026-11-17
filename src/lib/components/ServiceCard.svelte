@@ -1,14 +1,18 @@
 <script lang="ts">
 	import StatusDot from '@kleinbem/web-config/components/StatusDot';
-	import type { HealthStatus, LayoutDensity, ServiceItem } from '../types';
+	import { describeHealth, formatResponseTime } from '../portal';
+	import type { EndpointDetail, HealthStatus, LayoutDensity, ServiceItem } from '../types';
 
 	let {
 		service,
 		health = 'unknown',
+		detail,
 		density = 'comfortable'
 	}: {
 		service: ServiceItem;
 		health?: HealthStatus;
+		/** Latest Gatus data for this service: response time, recent checks, failure reason. */
+		detail?: EndpointDetail;
 		density?: LayoutDensity;
 	} = $props();
 
@@ -27,6 +31,9 @@
 
 	let networkBadge = $derived(NETWORK_BADGES[service.network]);
 	let displayUrl = $derived(service.url.replace(/^https?:\/\//, ''));
+	let healthTitle = $derived(describeHealth(health, detail));
+	let history = $derived(detail && detail.history.length > 1 ? detail.history : []);
+	let passed = $derived(history.filter(Boolean).length);
 
 	async function copyUrl() {
 		try {
@@ -49,6 +56,21 @@
 		<span aria-hidden="true">{networkBadge.icon}</span>
 		<span class={hideLabelMobile ? 'hidden sm:inline' : ''}>{networkBadge.label}</span>
 	</span>
+{/snippet}
+
+{#snippet historyBar(cls: string)}
+	{#if history.length > 0}
+		<div
+			class="items-center gap-px {cls}"
+			role="img"
+			aria-label="{passed} of {history.length} recent checks passed"
+			title="{passed} of {history.length} recent checks passed"
+		>
+			{#each history as ok, i (i)}
+				<span class="w-1 h-2.5 rounded-[1px] {ok ? 'bg-status-success/60' : 'bg-status-danger'}"></span>
+			{/each}
+		</div>
+	{/if}
 {/snippet}
 
 {#snippet copyBtn(label: string, cls: string)}
@@ -79,7 +101,7 @@
 			</div>
 		</a>
 		<div class="flex items-center gap-1.5 shrink-0">
-			<StatusDot status={health} />
+			<StatusDot status={health} title={healthTitle} />
 			{@render copyBtn(copied ? '✓' : '📋', 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100 text-muted hover:text-heading p-1 rounded transition-opacity text-[10px] font-mono')}
 		</div>
 	</div>
@@ -104,8 +126,12 @@
 			</div>
 		</a>
 		<div class="flex items-center gap-2 shrink-0">
+			{#if detail?.responseMs !== undefined && health === 'healthy'}
+				<span class="hidden md:inline text-[10px] font-mono text-muted tabular-nums">{formatResponseTime(detail.responseMs)}</span>
+			{/if}
+			{@render historyBar('hidden lg:flex')}
 			{@render netBadge(true)}
-			<StatusDot status={health} />
+			<StatusDot status={health} title={healthTitle} />
 			{@render copyBtn(copied ? '✓' : '📋', 'text-muted hover:text-heading p-1 rounded transition-colors text-xs font-mono')}
 		</div>
 	</div>
@@ -121,12 +147,23 @@
 					</div>
 				</a>
 				<div class="flex items-center gap-1.5 shrink-0">
-					<StatusDot status={health} />
+					<StatusDot status={health} title={healthTitle} />
 					{@render netBadge(false)}
 				</div>
 			</div>
 			{#if service.description}
 				<p class="text-xs text-fg line-clamp-2 leading-relaxed">{service.description}</p>
+			{/if}
+			{#if health === 'down' && detail?.reason}
+				<p class="mt-1.5 text-[11px] font-mono text-status-danger line-clamp-2" title={detail.reason}>{detail.reason}</p>
+			{/if}
+			{#if history.length > 0}
+				<div class="mt-2.5 flex items-center justify-between gap-2">
+					{@render historyBar('flex')}
+					{#if detail?.responseMs !== undefined && health === 'healthy'}
+						<span class="text-[10px] font-mono text-muted tabular-nums">{formatResponseTime(detail.responseMs)}</span>
+					{/if}
+				</div>
 			{/if}
 		</div>
 		<div class="mt-3 pt-2.5 border-t border-line flex items-center justify-between text-[11px] text-muted font-mono">

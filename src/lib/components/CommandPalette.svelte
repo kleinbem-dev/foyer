@@ -5,6 +5,7 @@
 		buildPaletteEntries,
 		filterPaletteEntries,
 		formatWebSearchUrl,
+		isTypeToSearchKey,
 		type PaletteEntry
 	} from '../portal';
 	import type { HostInfo, PinnedLink, ServiceItem } from '../types';
@@ -15,6 +16,7 @@
 		hosts = [],
 		searchUrlTemplate = DEFAULT_SEARCH_URL_TEMPLATE,
 		onSelectHost,
+		typeToSearch = false,
 		open = $bindable(false)
 	}: {
 		services: ServiceItem[];
@@ -22,6 +24,8 @@
 		hosts?: HostInfo[];
 		searchUrlTemplate?: string;
 		onSelectHost?: (hostId: string) => void;
+		/** Typing a letter or digit anywhere on the page opens the palette with it. */
+		typeToSearch?: boolean;
 		open: boolean;
 	} = $props();
 
@@ -111,24 +115,33 @@
 		}
 	}
 
+	// Keys typed into a field, or while another dialog is open, belong there.
+	function pageHasKeyboardFocus(): boolean {
+		const active = document.activeElement as HTMLElement | null;
+		return (
+			['INPUT', 'TEXTAREA', 'SELECT'].includes(active?.tagName ?? '') ||
+			active?.isContentEditable === true ||
+			document.querySelector('dialog[open]') !== null
+		);
+	}
+
+	function openWith(initialQuery: string) {
+		query = initialQuery;
+		copyNotice = null;
+		open = true;
+	}
+
 	function handleWindowKeyDown(e: KeyboardEvent) {
-		if (!open) {
-			if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
-				e.preventDefault();
-				query = '';
-				copyNotice = null;
-				open = true;
-			} else if (
-				e.key === '/' &&
-				!(e.metaKey || e.ctrlKey || e.altKey) &&
-				!['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName ?? '') &&
-				!(document.activeElement as HTMLElement | null)?.isContentEditable
-			) {
-				e.preventDefault();
-				query = '';
-				copyNotice = null;
-				open = true;
-			}
+		if (open || e.defaultPrevented) return;
+		if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+			e.preventDefault();
+			openWith('');
+		} else if (e.key === '/' && !(e.metaKey || e.ctrlKey || e.altKey) && !pageHasKeyboardFocus()) {
+			e.preventDefault();
+			openWith('');
+		} else if (typeToSearch && isTypeToSearchKey(e) && !pageHasKeyboardFocus()) {
+			e.preventDefault();
+			openWith(e.key);
 		}
 	}
 

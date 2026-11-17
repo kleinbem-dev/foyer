@@ -1,19 +1,21 @@
 <script lang="ts">
-	import { resolveHealth } from '../data/gatus';
+	import { resolveDetail, resolveHealth } from '../data/gatus';
 	import { getCategoryIcon } from '../portal';
-	import type { HealthStatus, LayoutDensity, ServiceItem } from '../types';
+	import type { EndpointDetail, HealthStatus, LayoutDensity, ServiceItem } from '../types';
 	import ServiceCard from './ServiceCard.svelte';
 
 	let {
 		category,
 		services,
 		healthMap = {},
+		healthDetails = {},
 		density = 'comfortable',
 		categoryIcons
 	}: {
 		category: string;
 		services: ServiceItem[];
 		healthMap?: Record<string, HealthStatus>;
+		healthDetails?: Record<string, EndpointDetail>;
 		density?: LayoutDensity;
 		categoryIcons?: Record<string, string>;
 	} = $props();
@@ -43,7 +45,7 @@
 		<div class={containerClass}>
 			{#each services as service (service.id)}
 				{@const health = resolveHealth(service, healthMap)}
-				<ServiceCard {service} {health} {density} />
+				<ServiceCard {service} {health} detail={resolveDetail(service, healthDetails)} {density} />
 			{/each}
 		</div>
 	</section>

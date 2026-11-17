@@ -165,6 +165,7 @@ export function parsePortalConfig(raw: unknown): PortalConfig {
 	const obj = raw as Record<string, unknown>;
 	const gatusCandidate = asNonEmptyString(obj.gatusUrl);
 	const searchCandidate = asNonEmptyString(obj.searchUrlTemplate);
+	const attentionCandidate = asNonEmptyString(obj.attentionUrl);
 	const categoryOrder = Array.isArray(obj.categoryOrder)
 		? obj.categoryOrder.map(asNonEmptyString).filter((c): c is string => c !== undefined)
 		: DEFAULT_CATEGORY_ORDER;
@@ -195,14 +196,28 @@ export function parsePortalConfig(raw: unknown): PortalConfig {
 				? searchCandidate
 				: DEFAULT_SEARCH_URL_TEMPLATE,
 		footerLinks: parseFooterLinks(obj.footerLinks) ?? DEFAULT_CONFIG.footerLinks,
-		links: parseLinks(obj.links)
+		links: parseLinks(obj.links),
+		attentionUrl: attentionCandidate && isSafePortalUrl(attentionCandidate) ? attentionCandidate : undefined,
+		typeToSearch: obj.typeToSearch === true
 	};
+}
+
+/** The last `/config.json` this browser loaded, so the page can render before the network answers. */
+export function parseCachedConfig(raw: string | null): PortalConfig | null {
+	if (!raw) return null;
+	try {
+		const json: unknown = JSON.parse(raw);
+		if (!json || typeof json !== 'object' || Array.isArray(json)) return null;
+		return parsePortalConfig(json);
+	} catch {
+		return null;
+	}
 }
 
 export async function loadPortalConfig(
 	configPath = './config.json',
 	signal?: AbortSignal
-): Promise<{ config: PortalConfig; warning?: string }> {
+): Promise<{ config: PortalConfig; warning?: string; raw?: string }> {
 	try {
 		const timeout = AbortSignal.timeout(5000);
 		const res = await fetch(configPath, {
@@ -219,14 +234,15 @@ export async function loadPortalConfig(
 			};
 		}
 
-		const json: unknown = await res.json();
+		const raw = await res.text();
+		const json: unknown = JSON.parse(raw);
 		if (!json || typeof json !== 'object' || Array.isArray(json)) {
 			return {
 				config: structuredClone(DEFAULT_CONFIG),
 				warning: `${configPath} must contain a JSON object; using default configuration.`
 			};
 		}
-		return { config: parsePortalConfig(json) };
+		return { config: parsePortalConfig(json), raw };
 	} catch (err) {
 		if (signal?.aborted) return { config: structuredClone(DEFAULT_CONFIG) };
 		return {

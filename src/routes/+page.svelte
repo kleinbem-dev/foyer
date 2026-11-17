@@ -1,28 +1,47 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import AttentionPanel from '#lib/components/AttentionPanel.svelte';
 	import BookmarksSection from '#lib/components/BookmarksSection.svelte';
 	import CategorySection from '#lib/components/CategorySection.svelte';
 	import CommandPalette from '#lib/components/CommandPalette.svelte';
 	import Header from '#lib/components/Header.svelte';
 	import HostBar from '#lib/components/HostBar.svelte';
 	import LayoutToggle from '#lib/components/LayoutToggle.svelte';
-	import { DEFAULT_CONFIG, loadPortalConfig } from '#lib/config';
-	import { fetchGatusStatuses } from '#lib/data/gatus';
+	import { DEFAULT_CONFIG, loadPortalConfig, parseCachedConfig } from '#lib/config';
+	import { buildServiceAttention, fetchAttentionFeed, sortAttention } from '#lib/data/attention';
+	import { fetchGatusSnapshot } from '#lib/data/gatus';
 	import { computeServiceMetrics, filterServices, groupServicesByCategory, type NetworkFilter } from '#lib/portal';
-	import type { HealthStatus, LayoutDensity, PinnedBookmark, PortalConfig } from '#lib/types';
+	import type {
+		AttentionItem, EndpointDetail, HealthStatus, LayoutDensity, PinnedBookmark, PortalConfig
+	} from '#lib/types';
+
+	const CONFIG_CACHE_KEY = 'foyer-config-cache';
 
 	let config = $state.raw<PortalConfig>(DEFAULT_CONFIG);
 	let configWarning = $state<string | undefined>(undefined);
+	// False until /config.json answered or a cached copy was shown: no empty state before that.
+	let configReady = $state(false);
 	let bookmarks = $state<PinnedBookmark[]>([]);
 	let commandPaletteOpen = $state(false);
 	let selectedHost = $state<string | null>(null);
 	let requestedNetworkFilter = $state<NetworkFilter>('all');
 	let density = $state<LayoutDensity>('comfortable');
 	let healthMap = $state.raw<Record<string, HealthStatus>>({});
+	let healthDetails = $state.raw<Record<string, EndpointDetail>>({});
+	let feedItems = $state.raw<AttentionItem[]>([]);
 	let healthUpdatedAt = $state<Date | null>(null);
 	let healthStale = $state(false);
 
 	let metrics = $derived(computeServiceMetrics(config.services, healthMap));
+	let attentionItems = $derived(
+		sortAttention([...buildServiceAttention(config.services, healthDetails), ...feedItems])
+	);
+	let baseTitle = $derived(config.subtitle ? `${config.title} — ${config.subtitle}` : config.title);
+
+	// The tab shows how many services are down, so a pinned or background tab still tells.
+	$effect(() => {
+		if (configReady) document.title = metrics.issueCount > 0 ? `(${metrics.issueCount}) ${baseTitle}` : baseTitle;
+	});
 
 	// Falls back to 'all' automatically once no endpoints have issues.
 	let networkFilter = $derived<NetworkFilter>(
@@ -64,11 +83,30 @@
 			if (saved && ['comfortable', 'compact', 'list'].includes(saved)) density = saved;
 		} catch {}
 
+		let cached: PortalConfig | null = null;
+		try {
+			cached = parseCachedConfig(localStorage.getItem(CONFIG_CACHE_KEY));
+		} catch {}
+		if (cached) {
+			config = cached;
+			configReady = true;
+		}
+
 		const controller = new AbortController();
-		loadPortalConfig('./config.json', controller.signal).then(({ config: loaded, warning }) => {
-			config = loaded;
-			configWarning = warning;
-			document.title = loaded.subtitle ? `${loaded.title} — ${loaded.subtitle}` : loaded.title;
+		loadPortalConfig('./config.json', controller.signal).then(({ config: loaded, warning, raw }) => {
+			if (controller.signal.aborted) return;
+			if (warning && cached) {
+				// Keep what the last visit showed rather than fall back to an empty page.
+				configWarning = `${warning.replace(/; using default configuration\.$/, '')}; showing the last loaded configuration.`;
+			} else {
+				config = loaded;
+				configWarning = warning;
+			}
+			configReady = true;
+			try {
+				if (raw) localStorage.setItem(CONFIG_CACHE_KEY, raw);
+				else if (!warning) localStorage.removeItem(CONFIG_CACHE_KEY);
+			} catch {}
 		});
 		return () => controller.abort();
 	});
@@ -78,10 +116,11 @@
 		if (gatusInFlight || document.hidden) return;
 		gatusInFlight = true;
 		try {
-			const next = await fetchGatusStatuses(gatusUrl, signal);
+			const next = await fetchGatusSnapshot(gatusUrl, signal);
 			if (signal.aborted) return;
 			if (next) {
-				healthMap = next;
+				healthMap = next.statuses;
+				healthDetails = next.details;
 				healthUpdatedAt = new Date();
 				healthStale = false;
 			} else {
@@ -96,6 +135,7 @@
 		const gatusUrl = config.gatusUrl;
 		if (!gatusUrl) {
 			healthMap = {};
+			healthDetails = {};
 			healthStale = false;
 			return;
 		}
@@ -107,13 +147,41 @@
 			clearInterval(interval);
 		};
 	});
+
+	let feedInFlight = false;
+	async function refreshFeed(attentionUrl: string, signal: AbortSignal) {
+		if (feedInFlight || document.hidden) return;
+		feedInFlight = true;
+		try {
+			const next = await fetchAttentionFeed(attentionUrl, signal);
+			// An unreachable feed keeps the last items.
+			if (next && !signal.aborted) feedItems = next;
+		} finally {
+			feedInFlight = false;
+		}
+	}
+
+	$effect(() => {
+		const attentionUrl = config.attentionUrl;
+		if (!attentionUrl) {
+			feedItems = [];
+			return;
+		}
+		const controller = new AbortController();
+		refreshFeed(attentionUrl, controller.signal);
+		const interval = setInterval(() => refreshFeed(attentionUrl, controller.signal), 5 * 60_000);
+		return () => {
+			controller.abort();
+			clearInterval(interval);
+		};
+	});
 </script>
 
 <svelte:document
 	onvisibilitychange={() => {
-		if (!document.hidden && config.gatusUrl) {
-			refreshHealth(config.gatusUrl, AbortSignal.timeout(4000));
-		}
+		if (document.hidden) return;
+		if (config.gatusUrl) refreshHealth(config.gatusUrl, AbortSignal.timeout(4000));
+		if (config.attentionUrl) refreshFeed(config.attentionUrl, AbortSignal.timeout(5000));
 	}}
 />
 
@@ -167,7 +235,8 @@
 			{/if}
 		</div>
 
-		<HostBar hosts={config.hosts} counts={metrics.hostCounts} bind:selectedHost />
+		<AttentionPanel items={attentionItems} />
+		<HostBar hosts={config.hosts} counts={metrics.hostCounts} health={metrics.hostHealth} bind:selectedHost />
 		<BookmarksSection bind:bookmarks links={config.links} />
 
 		{#if config.services.length > 0}
@@ -194,7 +263,9 @@
 		{/if}
 
 		<div class="space-y-10">
-			{#if config.services.length === 0}
+			{#if !configReady}
+				<div class="text-center py-16 text-muted text-sm" role="status">Loading…</div>
+			{:else if config.services.length === 0}
 				<div class="p-10 rounded-2xl border border-dashed border-line text-center space-y-2">
 					<p class="text-sm font-medium text-heading">No services configured</p>
 					<p class="text-xs text-muted max-w-md mx-auto">
@@ -209,6 +280,7 @@
 						category={group.category}
 						services={group.services}
 						{healthMap}
+						{healthDetails}
 						{density}
 						categoryIcons={config.categoryIcons}
 					/>
@@ -235,6 +307,7 @@
 		hosts={config.hosts}
 		searchUrlTemplate={config.searchUrlTemplate}
 		onSelectHost={(hostId) => (selectedHost = selectedHost === hostId ? null : hostId)}
+		typeToSearch={config.typeToSearch}
 		bind:open={commandPaletteOpen}
 	/>
 </div>

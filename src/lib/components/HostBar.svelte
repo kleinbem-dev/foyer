@@ -1,13 +1,17 @@
 <script lang="ts">
-	import type { HostInfo } from '../types';
+	import StatusDot from '@kleinbem/web-config/components/StatusDot';
+	import type { HealthStatus, HostInfo } from '../types';
 
 	let {
 		hosts,
 		counts = {},
+		health = {},
 		selectedHost = $bindable<string | null>(null)
 	}: {
 		hosts: HostInfo[];
 		counts?: Record<string, number>;
+		/** Worst health among each host's checked services; hosts without checks are absent. */
+		health?: Record<string, HealthStatus>;
 		selectedHost?: string | null;
 	} = $props();
 
@@ -77,6 +81,13 @@
 									<span aria-hidden="true">{host.icon}</span>
 								{/if}
 								<span class="truncate">{host.name}</span>
+								{#if health[host.id]}
+									<StatusDot
+										status={health[host.id]}
+										size="sm"
+										label={health[host.id] === 'healthy' ? 'All checked services up' : 'Has services that are down'}
+									/>
+								{/if}
 							</span>
 							<div class="flex items-center gap-1 shrink-0">
 								{#if host.arch}

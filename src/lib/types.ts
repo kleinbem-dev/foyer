@@ -2,6 +2,37 @@ export type NetworkType = 'public' | 'mesh' | 'lan';
 
 export type HealthStatus = 'healthy' | 'degraded' | 'down' | 'unknown' | 'checking';
 
+/** What Gatus last reported for one endpoint. */
+export interface EndpointDetail {
+	name: string;
+	status: HealthStatus;
+	/** Duration of the latest probe in milliseconds. */
+	responseMs?: number;
+	/** ISO timestamp of the latest probe. */
+	checkedAt?: string;
+	/** Outcome of the most recent probes, oldest first. */
+	history: boolean[];
+	/** ISO timestamp of the first probe in the current run of failures. */
+	downSince?: string;
+	/** Why the latest probe failed: its error, or the conditions that did not hold. */
+	reason?: string;
+}
+
+export type AttentionSeverity = 'critical' | 'warning' | 'info';
+
+/** One entry of the "Needs attention" panel: a service that is down, or an item of the attention feed. */
+export interface AttentionItem {
+	id: string;
+	title: string;
+	severity: AttentionSeverity;
+	url?: string;
+	detail?: string;
+	/** Short label for where the item comes from, such as "GitHub". */
+	source?: string;
+	/** ISO timestamp. */
+	updatedAt?: string;
+}
+
 export type LayoutDensity = 'comfortable' | 'compact' | 'list';
 
 export interface PinnedBookmark {
@@ -69,4 +100,8 @@ export interface PortalConfig {
 	searchUrlTemplate?: string;
 	footerLinks?: FooterLink[];
 	links?: PinnedLink[];
+	/** JSON feed of items that need attention, shown above the services. */
+	attentionUrl?: string;
+	/** Open the search palette when a letter or digit is typed anywhere on the page. */
+	typeToSearch?: boolean;
 }

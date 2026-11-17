@@ -5,7 +5,9 @@ import {
 	isValidHttpUrl
 } from './config';
 import { resolveHealth } from './data/gatus';
-import type { HealthStatus, HostInfo, PinnedBookmark, PinnedLink, ServiceItem, WeatherConfig } from './types';
+import type {
+	EndpointDetail, HealthStatus, HostInfo, PinnedBookmark, PinnedLink, ServiceItem, WeatherConfig
+} from './types';
 
 export type NetworkFilter = 'all' | 'public' | 'mesh' | 'issues';
 
@@ -123,7 +125,7 @@ export function filterPaletteEntries(entries: PaletteEntry[], rawQuery: string):
 		else if (!['#', '@', '!'].includes(token)) words.push(token);
 	}
 
-	return entries.filter((entry) => {
+	const matches = entries.filter((entry) => {
 		const host = entry.host?.toLowerCase() ?? '';
 		const cat = entry.category.toLowerCase();
 		const net = entry.network?.toLowerCase() ?? '';
@@ -137,6 +139,19 @@ export function filterPaletteEntries(entries: PaletteEntry[], rawQuery: string):
 			.map((s) => s.toLowerCase());
 		return words.every((w) => fields.some((f) => f.includes(w)));
 	});
+	if (words.length === 0) return matches;
+
+	// Enter opens the first result, so a match in the name beats one in the description.
+	const rank = (entry: PaletteEntry) => {
+		const name = entry.name.toLowerCase();
+		if (name.startsWith(words[0])) return 0;
+		if (name.split(/[^\p{L}\p{N}]+/u).some((part) => words.some((w) => part.startsWith(w)))) return 1;
+		return words.some((w) => name.includes(w)) ? 2 : 3;
+	};
+	return matches
+		.map((entry, index) => ({ entry, index, rank: rank(entry) }))
+		.sort((a, b) => a.rank - b.rank || a.index - b.index)
+		.map((m) => m.entry);
 }
 
 export function formatWebSearchUrl(term: string, template = DEFAULT_SEARCH_URL_TEMPLATE): string | null {
@@ -202,6 +217,7 @@ export function computeServiceMetrics(
 	let healthyCount = 0;
 	let issueCount = 0;
 	const hostCounts: Record<string, number> = Object.create(null);
+	const hostHealth: Record<string, HealthStatus> = Object.create(null);
 
 	for (const s of services) {
 		hostCounts[s.host] = (hostCounts[s.host] ?? 0) + 1;
@@ -209,10 +225,65 @@ export function computeServiceMetrics(
 		else if (s.network === 'mesh') meshCount++;
 
 		const status = resolveHealth(s, healthMap);
+		const hasIssue = status === 'down' || status === 'degraded';
 		if (status === 'healthy') healthyCount++;
-		else if (status === 'down' || status === 'degraded') issueCount++;
+		else if (hasIssue) issueCount++;
+
+		// A host is as healthy as its worst probed service.
+		if (hasIssue) hostHealth[s.host] = 'down';
+		else if (status === 'healthy' && hostHealth[s.host] === undefined) hostHealth[s.host] = 'healthy';
 	}
-	return { totalCount: services.length, publicCount, meshCount, healthyCount, issueCount, hostCounts };
+	return {
+		totalCount: services.length, publicCount, meshCount, healthyCount, issueCount, hostCounts, hostHealth
+	};
+}
+
+/** "just now", "5 min ago", "3 h ago", "2 d ago"; empty for a missing, invalid or future time. */
+export function formatRelativeTime(iso: string | undefined, now: Date = new Date()): string {
+	if (!iso) return '';
+	const then = Date.parse(iso);
+	if (!Number.isFinite(then)) return '';
+	const seconds = Math.floor((now.getTime() - then) / 1000);
+	if (seconds < 0) return '';
+	if (seconds < 60) return 'just now';
+	const minutes = Math.floor(seconds / 60);
+	if (minutes < 60) return `${minutes} min ago`;
+	const hours = Math.floor(minutes / 60);
+	if (hours < 48) return `${hours} h ago`;
+	return `${Math.floor(hours / 24)} d ago`;
+}
+
+/** "<1 ms", "83 ms", "1.2 s". */
+export function formatResponseTime(ms: number): string {
+	if (ms < 1) return '<1 ms';
+	return ms < 1000 ? `${Math.round(ms)} ms` : `${(ms / 1000).toFixed(1)} s`;
+}
+
+/** One line for a status tooltip: "Operational · 83 ms · checked 2 min ago". */
+export function describeHealth(
+	status: HealthStatus,
+	detail: EndpointDetail | undefined,
+	now: Date = new Date()
+): string {
+	const label =
+		status === 'healthy' ? 'Operational'
+		: status === 'down' ? 'Offline'
+		: status === 'degraded' ? 'Degraded'
+		: status === 'checking' ? 'Checking'
+		: 'No health check';
+	const parts = [label];
+	if (detail?.responseMs !== undefined && status !== 'down') parts.push(formatResponseTime(detail.responseMs));
+	if (status === 'down' && detail?.reason) parts.push(detail.reason);
+	const downFor = status === 'down' ? formatRelativeTime(detail?.downSince, now) : '';
+	if (downFor) parts.push(`since ${downFor}`);
+	const checked = formatRelativeTime(detail?.checkedAt, now);
+	if (checked) parts.push(`checked ${checked}`);
+	return parts.join(' · ');
+}
+
+/** Whether a keydown should open the search palette pre-filled with its character. */
+export function isTypeToSearchKey(e: Pick<KeyboardEvent, 'key' | 'ctrlKey' | 'metaKey' | 'altKey' | 'isComposing'>): boolean {
+	return !e.ctrlKey && !e.metaKey && !e.altKey && !e.isComposing && /^[\p{L}\p{N}]$/u.test(e.key);
 }
 
 export function describeWeatherCode(code: number): { icon: string; condition: string } {

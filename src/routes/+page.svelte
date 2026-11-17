@@ -10,6 +10,7 @@
 	import { DEFAULT_CONFIG, loadPortalConfig, parseCachedConfig } from '#lib/config';
 	import { buildServiceAttention, fetchAttentionFeed, sortAttention } from '#lib/data/attention';
 	import { fetchGatusSnapshot } from '#lib/data/gatus';
+	import { startPolling } from '#lib/poll';
 	import { computeServiceMetrics, filterServices, groupServicesByCategory, type NetworkFilter } from '#lib/portal';
 	import type {
 		AttentionItem, EndpointDetail, HealthStatus, LayoutDensity, PinnedBookmark, PortalConfig
@@ -111,79 +112,51 @@
 		return () => controller.abort();
 	});
 
-	let gatusInFlight = false;
-	async function refreshHealth(gatusUrl: string, signal: AbortSignal) {
-		if (gatusInFlight || document.hidden) return;
-		gatusInFlight = true;
-		try {
-			const next = await fetchGatusSnapshot(gatusUrl, signal);
-			if (signal.aborted) return;
-			if (next) {
-				healthMap = next.statuses;
-				healthDetails = next.details;
-				healthUpdatedAt = new Date();
-				healthStale = false;
-			} else {
-				healthStale = true;
-			}
-		} finally {
-			gatusInFlight = false;
-		}
-	}
+	// Primitives, so replacing the config with one that has the same URLs restarts nothing.
+	let gatusUrl = $derived(config.gatusUrl);
+	let attentionUrl = $derived(config.attentionUrl);
 
 	$effect(() => {
-		const gatusUrl = config.gatusUrl;
-		if (!gatusUrl) {
+		const url = gatusUrl;
+		if (!url) {
 			healthMap = {};
 			healthDetails = {};
 			healthStale = false;
 			return;
 		}
-		const controller = new AbortController();
-		refreshHealth(gatusUrl, controller.signal);
-		const interval = setInterval(() => refreshHealth(gatusUrl, controller.signal), 30_000);
-		return () => {
-			controller.abort();
-			clearInterval(interval);
-		};
+		return startPolling(
+			(signal) => fetchGatusSnapshot(url, signal),
+			(next) => {
+				// An unreachable Gatus keeps the last known health, marked stale.
+				if (next) {
+					healthMap = next.statuses;
+					healthDetails = next.details;
+					healthUpdatedAt = new Date();
+					healthStale = false;
+				} else {
+					healthStale = true;
+				}
+			},
+			30_000
+		);
 	});
 
-	let feedInFlight = false;
-	async function refreshFeed(attentionUrl: string, signal: AbortSignal) {
-		if (feedInFlight || document.hidden) return;
-		feedInFlight = true;
-		try {
-			const next = await fetchAttentionFeed(attentionUrl, signal);
-			// An unreachable feed keeps the last items.
-			if (next && !signal.aborted) feedItems = next;
-		} finally {
-			feedInFlight = false;
-		}
-	}
-
 	$effect(() => {
-		const attentionUrl = config.attentionUrl;
-		if (!attentionUrl) {
+		const url = attentionUrl;
+		if (!url) {
 			feedItems = [];
 			return;
 		}
-		const controller = new AbortController();
-		refreshFeed(attentionUrl, controller.signal);
-		const interval = setInterval(() => refreshFeed(attentionUrl, controller.signal), 5 * 60_000);
-		return () => {
-			controller.abort();
-			clearInterval(interval);
-		};
+		return startPolling(
+			(signal) => fetchAttentionFeed(url, signal),
+			(next) => {
+				// An unreachable feed keeps the last items.
+				if (next) feedItems = next;
+			},
+			5 * 60_000
+		);
 	});
 </script>
-
-<svelte:document
-	onvisibilitychange={() => {
-		if (document.hidden) return;
-		if (config.gatusUrl) refreshHealth(config.gatusUrl, AbortSignal.timeout(4000));
-		if (config.attentionUrl) refreshFeed(config.attentionUrl, AbortSignal.timeout(5000));
-	}}
-/>
 
 <div class="min-h-screen flex flex-col bg-bg text-fg">
 	<Header

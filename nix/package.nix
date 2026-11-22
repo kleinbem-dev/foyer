@@ -28,7 +28,7 @@ buildNpmPackage (finalAttrs: {
     ];
   };
 
-  npmDepsHash = "sha256-JLVjqmXMj6W6vC0mayDfN+gcDp//1Q0ZRx+qfOFkY+U=";
+  npmDepsHash = "sha256-2u5mAgVPFkBMJRHcBz55OqQ8Gf5hAaGm3+39U+rlix4=";
   # pacote creates `_cacache/tmp` when unpacking git dependencies (`@kleinbem/web-config`).
   # no-link: standard buildNpmPackage option for git lockfile entries, not an upstream bug.
   makeCacheWritable = true;

@@ -1,0 +1,24 @@
+@import "tailwindcss";
+@import "@kleinbem/web-config/theme";
+@import "@kleinbem/web-config/base.css";
+
+@source "../node_modules/@kleinbem/web-config";
+
+.glass-panel {
+	background: color-mix(in srgb, var(--color-surface, #151a21) 80%, transparent);
+	backdrop-filter: blur(12px);
+	-webkit-backdrop-filter: blur(12px);
+	border: 1px solid var(--color-line, rgba(255, 255, 255, 0.08));
+}
+
+dialog:modal {
+	overscroll-behavior: contain;
+}
+
+dialog::backdrop {
+	background: rgb(9 9 11 / 0.6);
+	backdrop-filter: blur(4px);
+	-webkit-backdrop-filter: blur(4px);
+	overflow: hidden;
+	overscroll-behavior: contain;
+}

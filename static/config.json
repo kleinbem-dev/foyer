@@ -1,0 +1,14 @@
+{
+	"title": "Foyer",
+	"subtitle": "Self-hosted service launchpad",
+	"welcomeTitle": "Welcome home",
+	"welcomeSubtitle": "Provide a /config.json file in your web root to configure hosts, services, and health probes.",
+	"hosts": [],
+	"services": [],
+	"footerLinks": [
+		{
+			"label": "source",
+			"url": "https://github.com/kleinbem-dev/foyer"
+		}
+	]
+}
